@@ -1,0 +1,212 @@
+/* 全局样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0f1419;
+  color: #e6f1ff;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a2332;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #64ffda;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4ecdc4;
+}
+
+/* 选中文本样式 */
+::selection {
+  background-color: rgba(100, 255, 218, 0.3);
+  color: #e6f1ff;
+}
+
+/* 链接默认样式重置 */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 按钮重置 */
+button {
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* 输入框样式 */
+input, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* 图片响应式 */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 列表样式重置 */
+ul, ol {
+  list-style: none;
+}
+
+/* 标题样式 */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* 段落间距 */
+p {
+  margin-bottom: 1rem;
+}
+
+/* 代码块样式 */
+code {
+  background: rgba(100, 255, 218, 0.1);
+  color: #64ffda;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+pre {
+  background: #1a2332;
+  color: #e6f1ff;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+}
+
+/* 表格样式 */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+th, td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(100, 255, 218, 0.1);
+}
+
+th {
+  background: rgba(100, 255, 218, 0.05);
+  font-weight: 600;
+}
+
+/* 引用样式 */
+blockquote {
+  border-left: 4px solid #64ffda;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  color: #8892b0;
+}
+
+/* 分割线样式 */
+hr {
+  border: none;
+  height: 1px;
+  background: rgba(100, 255, 218, 0.1);
+  margin: 2rem 0;
+}
+
+/* 响应式图片 */
+.responsive-img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+/* 动画类 */
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.slide-up {
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 工具类 */
+.text-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glass-effect {
+  backdrop-filter: blur(20px);
+  background: rgba(26, 35, 50, 0.8);
+  border: 1px solid rgba(100, 255, 218, 0.1);
+}
+
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* 媒体查询 */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+
+  .container {
+    padding: 0 1rem;
+  }
+}
