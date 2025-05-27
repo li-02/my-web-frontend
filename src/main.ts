@@ -1,5 +1,3 @@
-import './assets/main.css'
-
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
@@ -8,6 +6,7 @@ import router from './router'
 import "./tailwindcss.css";
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+import './global.css'
 const app = createApp(App)
 
 app.use(createPinia())

@@ -82,7 +82,7 @@ onMounted(() => {
   background: var(--bg-secondary);
   border-radius: 20px;
   padding: 2rem;
-  transition: all 0.3s ease;
+  transition: all 0.6s ease;
   border: 1px solid rgba(100, 255, 218, 0.1);
   position: relative;
   overflow: hidden;
@@ -97,7 +97,7 @@ onMounted(() => {
   left: 0;
   width: 100%;
   height: 4px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient);
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }

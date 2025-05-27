@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen overflow-x-hidden">
+  <div class=" w-full ">
     <!-- 导航栏 -->
     <nav
       :class="[
@@ -7,7 +7,7 @@
         scrollY > 100 ? 'nav-scrolled' : ''
       ]"
     >
-      <div class="nav-container">
+      <div class="nav-container w-full">
         <a href="#" class="logo">
           我的博客
         </a>
@@ -24,7 +24,7 @@
       </div>
     </nav>
 
-    <main>
+    <div class="main-content">
       <!-- 头部介绍区域 -->
       <section class="hero" id="home">
         <Particles />
@@ -52,16 +52,11 @@
           />
         </div>
       </section>
-    </main>
-
-    <!-- 侧边栏 -->
-    <aside class="sidebar">
-      <Sidebar :tags="tags" :recent-posts="recentPosts" />
-    </aside>
+    </div>
 
     <!-- 页脚 -->
-    <footer>
-      <div class="footer-content">
+    <div class="page-footer">
+      <div class="footer-content w-full">
         <div class="social-links">
           <a
             v-for="(social, index) in socialLinks"
@@ -74,7 +69,7 @@
         </div>
         <p>&copy; 2024 我的博客. 用 ❤️ 创建</p>
       </div>
-    </footer>
+    </div>
   </div>
 </template>
 
@@ -136,16 +131,6 @@ const articles: Article[] = [
   }
 ]
 
-const tags: string[] = ['Spring Boot', 'Vue.js', 'MySQL', 'Redis', 'Docker', 'Java', 'JavaScript', '微服务']
-
-const recentPosts: string[] = [
-  'Spring Boot 3.0 新特性深度解析',
-  'Vue 3 Composition API 最佳实践',
-  'MySQL 8.0 性能优化实战指南',
-  '微服务架构设计模式与实践',
-  'Docker 容器化部署完整指南'
-]
-
 const socialLinks: SocialLink[] = [
   { icon: '🐙', title: 'GitHub' },
   { icon: '🐦', title: 'Twitter' },
@@ -179,30 +164,12 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-:root {
-  --bg-primary: #0f1419;
-  --bg-secondary: #1a2332;
-  --bg-tertiary: #242d3d;
-  --text-primary: #e6f1ff;
-  --text-secondary: #8892b0;
-  --accent: #64ffda;
-  --accent-hover: #4ecdc4;
-  --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --shadow: rgba(0, 0, 0, 0.3);
-}
-
-body {
-  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  line-height: 1.6;
-  overflow-x: hidden;
-}
-
 /* 导航栏 */
 .nav {
   position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   width: 100%;
   background: rgba(15, 20, 25, 0.9);
   backdrop-filter: blur(20px);
@@ -216,7 +183,6 @@ body {
 }
 
 .nav-container {
-  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
@@ -270,12 +236,10 @@ body {
 }
 
 /* 主页面 */
-main {
-  margin-top: 80px;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
-  padding: 0 2rem;
+.main-content {
+  width: 100%;
+  padding: 0;
+  margin : 0 ;
 }
 
 /* 头部介绍区域 */
@@ -287,11 +251,14 @@ main {
   text-align: center;
   position: relative;
   overflow: hidden;
+  padding: 0 2rem;
 }
 
 .hero-content {
   z-index: 2;
   animation: fadeInUp 1s ease-out;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .hero h1 {
@@ -331,7 +298,7 @@ main {
 
 /* 博客文章区域 */
 .blog-section {
-  padding: 4rem 0;
+  padding: 4rem 2rem;
 }
 
 .section-title {
@@ -340,6 +307,10 @@ main {
   font-weight: 700;
   margin-bottom: 3rem;
   color: var(--text-primary);
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 3rem;
 }
 
 .articles-grid {
@@ -347,24 +318,13 @@ main {
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   gap: 2rem;
   margin-bottom: 3rem;
-}
-
-/* 侧边栏 */
-.sidebar {
-  position: fixed;
-  right: 2rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: var(--bg-secondary);
-  padding: 2rem;
-  border-radius: 20px;
-  width: 300px;
-  border: 1px solid rgba(100, 255, 218, 0.1);
-  backdrop-filter: blur(20px);
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* 页脚 */
-footer {
+.page-footer {
   background: var(--bg-secondary);
   padding: 3rem 0;
   text-align: center;
@@ -373,7 +333,6 @@ footer {
 }
 
 .footer-content {
-  max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
 }
@@ -404,25 +363,7 @@ footer {
   transform: translateY(-3px);
 }
 
-/* 动画 */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* 响应式设计 */
-@media (max-width: 1024px) {
-  .sidebar {
-    display: none;
-  }
-}
-
 @media (max-width: 768px) {
   .nav-links {
     display: none;
