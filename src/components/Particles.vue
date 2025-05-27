@@ -1,9 +1,9 @@
 <template>
-  <div class="absolute inset-0 z-10">
+  <div class="particles">
     <div
       v-for="particle in particles"
       :key="particle.id"
-      class="absolute w-1 h-1 bg-accent rounded-full opacity-60"
+      class="particle"
       :style="particle.style"
     />
   </div>
@@ -17,8 +17,8 @@ interface Particle {
   style: {
     left: string
     top: string
-    animation: string
     animationDelay: string
+    animationDuration: string
   }
 }
 
@@ -34,8 +34,8 @@ const createParticles = () => {
       style: {
         left: `${Math.random() * 100}%`,
         top: `${Math.random() * 100}%`,
-        animation: `float ${Math.random() * 3 + 3}s ease-in-out infinite`,
-        animationDelay: `${Math.random() * 6}s`
+        animationDelay: `${Math.random() * 6}s`,
+        animationDuration: `${Math.random() * 3 + 3}s`
       }
     }
     newParticles.push(particle)
@@ -50,6 +50,25 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0.6;
+  animation: float ease-in-out infinite;
+}
+
 @keyframes float {
   0%, 100% {
     transform: translateY(0px);

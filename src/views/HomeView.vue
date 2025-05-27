@@ -1,21 +1,20 @@
 <template>
-  <div class="min-h-screen bg-primary text-primary font-sans overflow-x-hidden">
+  <div class="min-h-screen overflow-x-hidden">
     <!-- 导航栏 -->
     <nav
       :class="[
-        'fixed top-0 w-full z-50 transition-all duration-300 nav-blur py-4',
+        'nav',
         scrollY > 100 ? 'nav-scrolled' : ''
       ]"
     >
-      <div class="max-w-6xl mx-auto flex justify-between items-center px-8">
-        <a href="#" class="text-2xl font-bold text-accent nav-logo">
+      <div class="nav-container">
+        <a href="#" class="logo">
           我的博客
         </a>
-        <ul class="hidden md:flex gap-8">
+        <ul class="nav-links">
           <li v-for="(item, index) in navItems" :key="index">
             <a
               :href="`#${item.id}`"
-              class="text-gray-400 font-medium nav-link"
               @click="smoothScroll"
             >
               {{ item.name }}
@@ -25,20 +24,16 @@
       </div>
     </nav>
 
-    <main class="mt-20 max-w-6xl mx-auto px-8">
+    <main>
       <!-- 头部介绍区域 -->
-      <section id="home" class="min-h-[60vh] flex items-center justify-center text-center relative overflow-hidden">
+      <section class="hero" id="home">
         <Particles />
-        <div class="relative z-20 hero-content">
-          <h1 class="text-4xl md:text-6xl font-bold mb-4 hero-title">
-            欢迎来到我的博客
-          </h1>
-          <p class="text-lg md:text-xl text-gray-400 mb-8 max-w-2xl leading-relaxed">
-            分享技术见解，记录成长历程，探索数字世界的无限可能。在这里，我们一起学习、思考、创造。
-          </p>
+        <div class="hero-content">
+          <h1>欢迎来到我的博客</h1>
+          <p>分享技术见解，记录成长历程，探索数字世界的无限可能。在这里，我们一起学习、思考、创造。</p>
           <a
             href="#blog"
-            class="inline-block px-8 py-4 text-black rounded-full font-semibold cta-button"
+            class="cta-button"
             @click="smoothScroll"
           >
             开始阅读
@@ -47,11 +42,9 @@
       </section>
 
       <!-- 博客文章区域 -->
-      <section id="blog" class="py-16">
-        <h2 class="text-center text-3xl md:text-4xl font-bold mb-12 text-white">
-          最新文章
-        </h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+      <section class="blog-section" id="blog">
+        <h2 class="section-title">最新文章</h2>
+        <div class="articles-grid">
           <ArticleCard
             v-for="(article, index) in articles"
             :key="index"
@@ -62,27 +55,24 @@
     </main>
 
     <!-- 侧边栏 -->
-    <aside class="hidden xl:block fixed right-8 top-1/2 transform -translate-y-1/2 w-80 sidebar">
+    <aside class="sidebar">
       <Sidebar :tags="tags" :recent-posts="recentPosts" />
     </aside>
 
     <!-- 页脚 -->
-    <footer class="footer py-12 text-center mt-16">
-      <div class="max-w-6xl mx-auto px-8">
-        <div class="flex justify-center gap-4 mb-8">
+    <footer>
+      <div class="footer-content">
+        <div class="social-links">
           <a
             v-for="(social, index) in socialLinks"
             :key="index"
             href="#"
             :title="social.title"
-            class="social-link"
           >
             {{ social.icon }}
           </a>
         </div>
-        <p class="text-gray-400">
-          &copy; 2024 我的博客. 用 ❤️ 创建
-        </p>
+        <p>&copy; 2024 我的博客. 用 ❤️ 创建</p>
       </div>
     </footer>
   </div>
@@ -90,9 +80,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import ArticleCard from './components/ArticleCard.vue'
-import Particles from './components/Particles.vue'
-import Sidebar from './components/Sidebar.vue'
+import ArticleCard from '../components/ArticleCard.vue'
+import Particles from '../components/Particles.vue'
 
 interface NavItem {
   name: string
@@ -189,8 +178,7 @@ onUnmounted(() => {
 })
 </script>
 
-<style>
-/* 自定义颜色变量 */
+<style scoped>
 :root {
   --bg-primary: #0f1419;
   --bg-secondary: #1a2332;
@@ -199,46 +187,74 @@ onUnmounted(() => {
   --text-secondary: #8892b0;
   --accent: #64ffda;
   --accent-hover: #4ecdc4;
+  --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --shadow: rgba(0, 0, 0, 0.3);
 }
 
-/* 主题色 */
-.bg-primary { background-color: var(--bg-primary); }
-.text-primary { color: var(--text-primary); }
-.text-accent { color: var(--accent); }
-
-/* 字体 */
-.font-sans {
+body {
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
 }
 
-/* 导航栏样式 */
-.nav-blur {
-  backdrop-filter: blur(20px);
+/* 导航栏 */
+.nav {
+  position: fixed;
+  top: 0;
+  width: 100%;
   background: rgba(15, 20, 25, 0.9);
+  backdrop-filter: blur(20px);
+  z-index: 1000;
+  padding: 1rem 0;
+  transition: all 0.3s ease;
 }
 
 .nav-scrolled {
   background: rgba(15, 20, 25, 0.95);
 }
 
-.nav-logo {
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 2rem;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
   transition: transform 0.3s ease;
 }
 
-.nav-logo:hover {
+.logo:hover {
   transform: scale(1.05);
 }
 
-.nav-link {
-  position: relative;
-  transition: color 0.3s ease;
+.nav-links {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
 }
 
-.nav-link:hover {
+.nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  position: relative;
+}
+
+.nav-links a:hover {
   color: var(--accent);
 }
 
-.nav-link::after {
+.nav-links a::after {
   content: '';
   position: absolute;
   bottom: -5px;
@@ -249,15 +265,146 @@ onUnmounted(() => {
   transition: width 0.3s ease;
 }
 
-.nav-link:hover::after {
+.nav-links a:hover::after {
   width: 100%;
 }
 
-/* Hero区域动画 */
+/* 主页面 */
+main {
+  margin-top: 80px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 2rem;
+}
+
+/* 头部介绍区域 */
+.hero {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
 .hero-content {
+  z-index: 2;
   animation: fadeInUp 1s ease-out;
 }
 
+.hero h1 {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero p {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  max-width: 600px;
+}
+
+.cta-button {
+  display: inline-block;
+  padding: 1rem 2rem;
+  background: var(--accent);
+  color: var(--bg-primary);
+  text-decoration: none;
+  border-radius: 50px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(100, 255, 218, 0.3);
+}
+
+.cta-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(100, 255, 218, 0.4);
+  background: var(--accent-hover);
+}
+
+/* 博客文章区域 */
+.blog-section {
+  padding: 4rem 0;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 3rem;
+  color: var(--text-primary);
+}
+
+.articles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+/* 侧边栏 */
+.sidebar {
+  position: fixed;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-secondary);
+  padding: 2rem;
+  border-radius: 20px;
+  width: 300px;
+  border: 1px solid rgba(100, 255, 218, 0.1);
+  backdrop-filter: blur(20px);
+}
+
+/* 页脚 */
+footer {
+  background: var(--bg-secondary);
+  padding: 3rem 0;
+  text-align: center;
+  margin-top: 4rem;
+  border-top: 1px solid rgba(100, 255, 218, 0.1);
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.social-links {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.social-links a {
+  width: 50px;
+  height: 50px;
+  background: var(--bg-tertiary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.social-links a:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+  transform: translateY(-3px);
+}
+
+/* 动画 */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -269,66 +416,28 @@ onUnmounted(() => {
   }
 }
 
-/* 标题渐变 */
-.hero-title {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .sidebar {
+    display: none;
+  }
 }
 
-/* CTA按钮 */
-.cta-button {
-  background: var(--accent);
-  transition: all 0.3s ease;
-  box-shadow: 0 10px 30px rgba(100, 255, 218, 0.3);
-}
-
-.cta-button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 40px rgba(100, 255, 218, 0.4);
-  background: var(--accent-hover);
-}
-
-/* 侧边栏 */
-.sidebar {
-  background: var(--bg-secondary);
-  padding: 2rem;
-  border-radius: 1.5rem;
-  border: 1px solid rgba(100, 255, 218, 0.1);
-  backdrop-filter: blur(20px);
-}
-
-/* 页脚 */
-.footer {
-  background: var(--bg-secondary);
-  border-top: 1px solid rgba(100, 255, 218, 0.1);
-}
-
-.social-link {
-  width: 3rem;
-  height: 3rem;
-  background: var(--bg-tertiary);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: all 0.3s ease;
-  font-size: 1.125rem;
-}
-
-.social-link:hover {
-  background: var(--accent);
-  color: var(--bg-primary);
-  transform: translateY(-3px);
-}
-
-/* 响应式 */
 @media (max-width: 768px) {
   .nav-links {
     display: none;
+  }
+
+  .hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .articles-grid {
+    grid-template-columns: 1fr;
+  }
+
+  main {
+    padding: 0 1rem;
   }
 }
 </style>
