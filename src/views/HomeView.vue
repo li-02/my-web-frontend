@@ -1,22 +1,12 @@
 <template>
-  <div class=" w-full ">
+  <div class="w-full">
     <!-- 导航栏 -->
-    <nav
-      :class="[
-        'nav',
-        scrollY > 100 ? 'nav-scrolled' : ''
-      ]"
-    >
+    <nav :class="['nav', scrollY > 100 ? 'nav-scrolled' : '']">
       <div class="nav-container w-full">
-        <a href="#" class="logo">
-          我的博客
-        </a>
+        <a href="#" class="logo"> 我的博客 </a>
         <ul class="nav-links">
           <li v-for="(item, index) in navItems" :key="index">
-            <a
-              :href="`#${item.id}`"
-              @click="smoothScroll"
-            >
+            <a :href="`#${item.id}`" @click="smoothScroll">
               {{ item.name }}
             </a>
           </li>
@@ -30,14 +20,10 @@
         <Particles />
         <div class="hero-content">
           <h1>欢迎来到我的博客</h1>
-          <p>分享技术见解，记录成长历程，探索数字世界的无限可能。在这里，我们一起学习、思考、创造。</p>
-          <a
-            href="#blog"
-            class="cta-button"
-            @click="smoothScroll"
-          >
-            开始阅读
-          </a>
+          <p>
+            分享技术见解，记录成长历程，探索数字世界的无限可能。在这里，我们一起学习、思考、创造。
+          </p>
+          <a href="#blog" class="cta-button" @click="smoothScroll"> 开始阅读 </a>
         </div>
       </section>
 
@@ -45,11 +31,7 @@
       <section class="blog-section" id="blog">
         <h2 class="section-title">最新文章</h2>
         <div class="articles-grid">
-          <ArticleCard
-            v-for="(article, index) in articles"
-            :key="index"
-            :article="article"
-          />
+          <ArticleCard v-for="(article, index) in articles" :key="index" :article="article" />
         </div>
       </section>
     </div>
@@ -58,12 +40,7 @@
     <div class="page-footer">
       <div class="footer-content w-full">
         <div class="social-links">
-          <a
-            v-for="(social, index) in socialLinks"
-            :key="index"
-            href="#"
-            :title="social.title"
-          >
+          <a v-for="(social, index) in socialLinks" :key="index" href="#" :title="social.title">
             {{ social.icon }}
           </a>
         </div>
@@ -101,7 +78,7 @@ const navItems: NavItem[] = [
   { name: '首页', id: 'home' },
   { name: '博客', id: 'blog' },
   { name: '关于', id: 'about' },
-  { name: '联系', id: 'contact' }
+  { name: '联系', id: 'contact' },
 ]
 
 const articles: Article[] = [
@@ -109,33 +86,37 @@ const articles: Article[] = [
     date: '2024-03-15',
     category: '技术分享',
     title: 'Spring Boot 3.0 新特性深度解析',
-    excerpt: 'Spring Boot 3.0 带来了许多令人兴奋的新特性，包括对 Java 17 的原生支持、GraalVM 本地镜像优化，以及全新的观察性功能。本文将深入探讨这些新特性及其实际应用场景...'
+    excerpt:
+      'Spring Boot 3.0 带来了许多令人兴奋的新特性，包括对 Java 17 的原生支持、GraalVM 本地镜像优化，以及全新的观察性功能。本文将深入探讨这些新特性及其实际应用场景...',
   },
   {
     date: '2024-03-12',
     category: '前端开发',
     title: 'Vue 3 Composition API 最佳实践',
-    excerpt: 'Composition API 是 Vue 3 中最重要的新特性之一，它为我们提供了更灵活的组件逻辑组织方式。本文将通过实际案例，展示如何在项目中有效地使用 Composition API...'
+    excerpt:
+      'Composition API 是 Vue 3 中最重要的新特性之一，它为我们提供了更灵活的组件逻辑组织方式。本文将通过实际案例，展示如何在项目中有效地使用 Composition API...',
   },
   {
     date: '2024-03-08',
     category: '数据库',
     title: 'MySQL 8.0 性能优化实战指南',
-    excerpt: '数据库性能优化是后端开发中的重要课题。本文将从索引设计、查询优化、配置调优等多个维度，分享 MySQL 8.0 的性能优化实践经验，帮助你构建高性能的数据库系统...'
+    excerpt:
+      '数据库性能优化是后端开发中的重要课题。本文将从索引设计、查询优化、配置调优等多个维度，分享 MySQL 8.0 的性能优化实践经验，帮助你构建高性能的数据库系统...',
   },
   {
     date: '2024-03-05',
     category: '架构设计',
     title: '微服务架构设计模式与实践',
-    excerpt: '微服务架构已成为现代软件开发的主流选择。本文将深入探讨微服务的设计模式、服务拆分原则、以及在实际项目中的落地实践，为你的架构设计提供参考...'
-  }
+    excerpt:
+      '微服务架构已成为现代软件开发的主流选择。本文将深入探讨微服务的设计模式、服务拆分原则、以及在实际项目中的落地实践，为你的架构设计提供参考...',
+  },
 ]
 
 const socialLinks: SocialLink[] = [
   { icon: '🐙', title: 'GitHub' },
   { icon: '🐦', title: 'Twitter' },
   { icon: '💼', title: 'LinkedIn' },
-  { icon: '📧', title: 'Email' }
+  { icon: '📧', title: 'Email' },
 ]
 
 const handleScroll = () => {
@@ -239,7 +220,7 @@ onUnmounted(() => {
 .main-content {
   width: 100%;
   padding: 0;
-  margin : 0 ;
+  margin: 0;
 }
 
 /* 头部介绍区域 */
