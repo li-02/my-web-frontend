@@ -1,9 +1,5 @@
 <template>
-  <article
-    class="article-card"
-    :class="{ 'card-visible': isVisible }"
-    ref="cardRef"
-  >
+  <article class="article-card" :class="{ 'card-visible': isVisible }" ref="cardRef">
     <div class="article-meta">
       <div class="article-date">
         <span>📅</span>
@@ -22,13 +18,7 @@
       {{ article.excerpt }}
     </p>
 
-    <a
-      href="#"
-      class="read-more"
-      @click.prevent="readMore"
-    >
-      阅读全文 →
-    </a>
+    <a href="#" class="read-more" @click.prevent="readMore"> 阅读全文 → </a>
   </article>
 </template>
 
@@ -67,8 +57,8 @@ onMounted(() => {
     },
     {
       threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px'
-    }
+      rootMargin: '0px 0px -50px 0px',
+    },
   )
 
   if (cardRef.value) {

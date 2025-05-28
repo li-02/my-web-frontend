@@ -35,8 +35,8 @@ const createParticles = () => {
         left: `${Math.random() * 100}%`,
         top: `${Math.random() * 100}%`,
         animationDelay: `${Math.random() * 6}s`,
-        animationDuration: `${Math.random() * 3 + 3}s`
-      }
+        animationDuration: `${Math.random() * 3 + 3}s`,
+      },
     }
     newParticles.push(particle)
   }
@@ -70,7 +70,8 @@ onMounted(() => {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
