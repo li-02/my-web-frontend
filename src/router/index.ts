@@ -9,6 +9,23 @@ const router = createRouter({
       name: 'home',
       component: HomeView,
     },
+    {
+      path: '/dreamory-admin-login',
+      name: 'admin-login',
+      component: () => import('../views/login/AdminLoginView.vue'),
+      meta: {
+        title: '管理员登录',
+      },
+    },
+    {
+      path: '/admin/dashboard',
+      name: 'admin-dashboard',
+      component: () => import('../views/admin/DashboardView.vue'),
+      meta: {
+        title: '管理员控制',
+      },
+    },
+
     // {
     //   path: '/about',
     //   name: 'about',
