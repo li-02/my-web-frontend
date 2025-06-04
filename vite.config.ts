@@ -25,6 +25,12 @@ export default defineConfig({
         secure: false,
         // 如果后端api不是以/api开头，可以使用rewrite重写路径
         rewrite: (path)=>path.replace(/^\/api/, '')
+      },
+      // 添加静态资源代理
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
       }
     }
   }
