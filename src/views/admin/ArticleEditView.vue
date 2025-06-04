@@ -6,7 +6,7 @@
 					<span class="btn-icon">←</span>
 					返回
 				</button>
-				<h2 class="page-title">{{ isEditing ? '编辑文章' : '新建文章' }}</h2>
+				<h2 class="page-title">{{ isEditing ? "编辑文章" : "新建文章" }}</h2>
 			</div>
 			<div class="header-actions">
 				<button class="save-draft-btn" @click="saveDraft" :disabled="!articleForm.title.trim()">
@@ -15,7 +15,7 @@
 				</button>
 				<button class="publish-btn" @click="publishArticle" :disabled="!canPublish">
 					<span class="btn-icon">🚀</span>
-					{{ isEditing ? '更新' : '发布' }}
+					{{ isEditing ? "更新" : "发布" }}
 				</button>
 			</div>
 		</div>
@@ -25,13 +25,7 @@
 			<div class="edit-area">
 				<!-- 紧凑的标题区域 -->
 				<div class="title-section">
-					<input
-						v-model="articleForm.title"
-						type="text"
-						class="title-input"
-						placeholder="请输入文章标题..."
-						maxlength="200"
-					/>
+					<input v-model="articleForm.title" type="text" class="title-input" placeholder="请输入文章标题..." maxlength="200" />
 				</div>
 
 				<!-- Markdown编辑器 -->
@@ -58,13 +52,7 @@
 					<h3 class="section-title">基本信息</h3>
 					<div class="form-group">
 						<label class="form-label">文章摘要</label>
-						<textarea
-							v-model="articleForm.summary"
-							class="form-textarea compact"
-							placeholder="请输入文章摘要（可选）..."
-							rows="2"
-							maxlength="500"
-						></textarea>
+						<textarea v-model="articleForm.summary" class="form-textarea compact" placeholder="请输入文章摘要（可选）..." rows="2" maxlength="500"></textarea>
 						<div class="input-hint">{{ articleForm.summary.length }}/500</div>
 					</div>
 				</div>
@@ -116,14 +104,7 @@
 					<div class="form-group">
 						<label class="form-label">文章标签</label>
 						<div class="tag-input-container">
-							<input
-								v-model="newTag"
-								type="text"
-								class="tag-input"
-								placeholder="输入标签后按回车添加"
-								@keyup.enter="addTag"
-								@keyup.esc="newTag = ''"
-							/>
+							<input v-model="newTag" type="text" class="tag-input" placeholder="输入标签后按回车添加" @keyup.enter="addTag" @keyup.esc="newTag = ''" />
 							<button class="add-tag-btn" @click="addTag" :disabled="!newTag.trim()">添加</button>
 						</div>
 						<div class="selected-tags">
@@ -134,13 +115,7 @@
 						</div>
 						<div class="tag-suggestions">
 							<span class="suggestions-label">推荐：</span>
-							<button
-								v-for="tag in suggestedTags.slice(0, 6)"
-								:key="tag"
-								class="suggestion-tag"
-								@click="addSuggestedTag(tag)"
-								:disabled="articleForm.tags.includes(tag)"
-							>
+							<button v-for="tag in suggestedTags.slice(0, 6)" :key="tag" class="suggestion-tag" @click="addSuggestedTag(tag)" :disabled="articleForm.tags.includes(tag)">
 								{{ tag }}
 							</button>
 						</div>
@@ -152,13 +127,7 @@
 					<h3 class="section-title">封面图片</h3>
 					<div class="form-group">
 						<div class="cover-upload">
-							<input
-								ref="coverInput"
-								type="file"
-								accept="image/*"
-								style="display: none"
-								@change="handleCoverUpload"
-							/>
+							<input ref="coverInput" type="file" accept="image/*" style="display: none" @change="handleCoverUpload" />
 							<div v-if="articleForm.coverImage" class="cover-preview">
 								<img :src="articleForm.coverImage" alt="封面预览" />
 								<button class="remove-cover" @click="removeCover">删除</button>
@@ -176,33 +145,16 @@
 					<h3 class="section-title">SEO设置</h3>
 					<div class="form-group">
 						<label class="form-label">SEO描述</label>
-						<textarea
-							v-model="articleForm.metaDescription"
-							class="form-textarea compact"
-							placeholder="用于搜索引擎展示的描述..."
-							rows="2"
-							maxlength="300"
-						></textarea>
+						<textarea v-model="articleForm.metaDescription" class="form-textarea compact" placeholder="用于搜索引擎展示的描述..." rows="2" maxlength="300"></textarea>
 						<div class="input-hint">{{ articleForm.metaDescription.length }}/300</div>
 					</div>
 					<div class="form-group">
 						<label class="form-label">SEO关键词</label>
-						<input
-							v-model="articleForm.metaKeywords"
-							type="text"
-							class="form-input"
-							placeholder="关键词用逗号分隔"
-							maxlength="200"
-						/>
+						<input v-model="articleForm.metaKeywords" type="text" class="form-input" placeholder="关键词用逗号分隔" maxlength="200" />
 					</div>
 					<div class="form-group">
 						<label class="form-label">URL别名</label>
-						<input
-							v-model="articleForm.slug"
-							type="text"
-							class="form-input"
-							placeholder="自定义URL路径（可选）"
-						/>
+						<input v-model="articleForm.slug" type="text" class="form-input" placeholder="自定义URL路径（可选）" />
 					</div>
 				</div>
 
@@ -234,10 +186,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { MdEditor } from 'md-editor-v3';
-import 'md-editor-v3/lib/style.css';
+import { MdEditor } from "md-editor-v3";
+import "md-editor-v3/lib/style.css";
 import { articleAPI } from "@/api/article.ts";
 import { categoryAPI } from "@/api/category.ts";
+import { uploadAPI } from "@/api/upload.ts";
 
 const router = useRouter();
 const route = useRoute();
@@ -250,18 +203,40 @@ const newTag = ref("");
 const categories = ref<any[]>([]);
 
 // 编辑器配置
-const editorHeight = ref('600px');
-const editorTheme = ref('dark');
-const previewTheme = ref('github');
-const codeTheme = ref('atom');
+const editorHeight = ref("600px");
+const editorTheme = ref("dark");
+const previewTheme = ref("github");
+const codeTheme = ref("atom");
 
 // 工具栏配置
 const toolbars = [
-	'bold', 'underline', 'italic', 'strikeThrough', '-',
-	'title', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
-	'codeRow', 'code', 'link', 'image', 'table', '-',
-	'revoke', 'next', 'save', '=',
-	'pageFullscreen', 'fullscreen', 'preview', 'previewOnly'
+	"bold",
+	"underline",
+	"italic",
+	"strikeThrough",
+	"-",
+	"title",
+	"sub",
+	"sup",
+	"quote",
+	"unorderedList",
+	"orderedList",
+	"task",
+	"-",
+	"codeRow",
+	"code",
+	"link",
+	"image",
+	"table",
+	"-",
+	"revoke",
+	"next",
+	"save",
+	"=",
+	"pageFullscreen",
+	"fullscreen",
+	"preview",
+	"previewOnly",
 ];
 
 // 文章表单数据
@@ -283,18 +258,18 @@ const articleForm = reactive({
 });
 
 // 常用标签建议
-const suggestedTags = ref([
-	"Vue.js", "Spring Boot", "JavaScript", "Java", "前端开发", "后端开发",
-	"数据库", "MySQL", "Redis", "微服务", "架构设计", "性能优化"
-]);
+const suggestedTags = ref(["Vue.js", "Spring Boot", "JavaScript", "Java", "前端开发", "后端开发", "数据库", "MySQL", "Redis", "微服务", "架构设计", "性能优化"]);
 
+// 上传图片标识
+const isUploading = ref(false);
+const uploadProgress = ref<Map<number, number>>(new Map());
 // 计算属性
 const canPublish = computed(() => {
 	return articleForm.title.trim() && articleForm.content.trim() && articleForm.categoryId;
 });
 
 const wordCount = computed(() => {
-	return articleForm.content.replace(/\s/g, '').length;
+	return articleForm.content.replace(/\s/g, "").length;
 });
 
 const readingTime = computed(() => {
@@ -421,19 +396,36 @@ const showSaveToast = (message: string) => {
 
 // md-editor-v3 回调函数
 const onUploadImg = async (files: File[], callback: (urls: string[]) => void) => {
-	// 处理图片上传
-	const urls = await Promise.all(
-		files.map(async (file) => {
-			// 这里应该上传到服务器并返回URL
-			// 临时使用本地预览
-			return new Promise<string>((resolve) => {
-				const reader = new FileReader();
-				reader.onload = (e) => resolve(e.target?.result as string);
-				reader.readAsDataURL(file);
-			});
-		})
-	);
-	callback(urls);
+	try {
+		isUploading.value = true;
+		const urls: string[] = [];
+		const uploadResults = await uploadAPI.uploadImages(files, (fileIndex, progress) => {
+			// 更新上传进度
+			uploadProgress.value.set(fileIndex, progress.percentage);
+			console.log(`文件 ${fileIndex + 1} 上传进度: ${progress.percentage}%`);
+		});
+		// 处理上传结果
+		for (const result of uploadResults) {
+			if (result.code === 200) {
+				urls.push(result.data.url);
+			} else {
+				console.error("上传失败:", result.message);
+				showSaveToast(`文件上传失败: ${result.message}`);
+			}
+		}
+		// 清除进度信息
+		uploadProgress.value.clear();
+		if (urls.length > 0) {
+			showSaveToast("图片上传成功");
+			callback(urls);
+		}
+	} catch (error) {
+		console.error("图片上传失败:", error);
+		showSaveToast("图片上传失败，请重试");
+	} finally {
+		isUploading.value = false;
+		uploadProgress.value.clear();
+	}
 };
 
 const onSave = (v: string, h: Promise<string>) => {
@@ -455,7 +447,7 @@ onMounted(() => {
 	calculateEditorHeight();
 
 	// 监听窗口大小变化
-	window.addEventListener('resize', calculateEditorHeight);
+	window.addEventListener("resize", calculateEditorHeight);
 
 	// 检查是否为编辑模式
 	const articleId = route.params.id as string;
@@ -1055,7 +1047,7 @@ onMounted(() => {
 :deep(.md-editor-input) {
 	color: var(--text-primary) !important;
 	background: var(--bg-primary) !important;
-	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+	font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace !important;
 }
 
 :deep(.md-editor-preview-wrapper) {
