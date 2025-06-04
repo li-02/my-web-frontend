@@ -326,11 +326,11 @@ const backupDatabase = async () => {
 		// const response = await settingsAPI.backupDatabase();
 
 		// 模拟下载备份文件
-		const filename = `blog_backup_${new Date().toISOString().split('T')[0]}.sql`;
+		const filename = `blog_backup_${new Date().toISOString().split("T")[0]}.sql`;
 		console.log(`开始下载备份文件: ${filename}`);
 
 		// 更新最后备份时间
-		lastBackupTime.value = new Date().toLocaleString('zh-CN');
+		lastBackupTime.value = new Date().toLocaleString("zh-CN");
 
 		alert("数据库备份成功！");
 	} catch (error) {
