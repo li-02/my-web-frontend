@@ -60,7 +60,7 @@
 		<div v-if="showCreateDialog || showEditDialog" class="dialog-overlay" @click="closeDialog">
 			<div class="dialog" @click.stop>
 				<div class="dialog-header">
-					<h3>{{ isEditing ? '编辑标签' : '新建标签' }}</h3>
+					<h3>{{ isEditing ? "编辑标签" : "新建标签" }}</h3>
 					<button class="close-btn" @click="closeDialog">✕</button>
 				</div>
 				<div class="dialog-body">
@@ -73,7 +73,7 @@
 				<div class="dialog-footer">
 					<button class="btn btn-secondary" @click="closeDialog">取消</button>
 					<button class="btn btn-primary" @click="saveTag" :disabled="!tagForm.name.trim()">
-						{{ isEditing ? '保存' : '创建' }}
+						{{ isEditing ? "保存" : "创建" }}
 					</button>
 				</div>
 			</div>
@@ -87,7 +87,9 @@
 					<button class="close-btn" @click="closeDeleteDialog">✕</button>
 				</div>
 				<div class="dialog-body">
-					<p>确定要删除标签 <strong>"{{ tagToDelete?.name }}"</strong> 吗？</p>
+					<p>
+						确定要删除标签 <strong>"{{ tagToDelete?.name }}"</strong> 吗？
+					</p>
 					<p class="warning-text">此操作不可撤销，删除后该标签将从所有文章中移除。</p>
 				</div>
 				<div class="dialog-footer">
