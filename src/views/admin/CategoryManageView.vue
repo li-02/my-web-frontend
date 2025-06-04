@@ -62,9 +62,8 @@ const searchCategories = () => {
 		return;
 	}
 
-	filteredCategories.value = categories.value.filter((category) =>
-		category.name.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-		category.description.toLowerCase().includes(searchKeyword.value.toLowerCase())
+	filteredCategories.value = categories.value.filter(
+		(category) => category.name.toLowerCase().includes(searchKeyword.value.toLowerCase()) || category.description.toLowerCase().includes(searchKeyword.value.toLowerCase())
 	);
 };
 
@@ -124,10 +123,7 @@ const validateForm = () => {
 	}
 
 	// 检查名称是否重复
-	const existingCategory = categories.value.find(
-		(cat) => cat.name === formData.value.name.trim() &&
-		(!editingCategory.value || cat.id !== editingCategory.value.id)
-	);
+	const existingCategory = categories.value.find((cat) => cat.name === formData.value.name.trim() && (!editingCategory.value || cat.id !== editingCategory.value.id));
 
 	if (existingCategory) {
 		formErrors.value.name = "分类名称已存在";
@@ -219,13 +215,7 @@ onMounted(() => {
 		<!-- 搜索区域 -->
 		<div class="search-section">
 			<div class="search-box">
-				<input
-					v-model="searchKeyword"
-					type="text"
-					placeholder="搜索分类名称或描述..."
-					class="search-input"
-					@keyup.enter="searchCategories"
-				/>
+				<input v-model="searchKeyword" type="text" placeholder="搜索分类名称或描述..." class="search-input" @keyup.enter="searchCategories" />
 				<button class="search-btn" @click="searchCategories">🔍</button>
 			</div>
 			<button class="reset-btn" @click="resetSearch">重置</button>
@@ -262,11 +252,9 @@ onMounted(() => {
 			<div v-if="filteredCategories.length === 0" class="empty-state">
 				<div class="empty-icon">📂</div>
 				<div class="empty-text">
-					{{ searchKeyword ? '没有找到匹配的分类' : '暂无分类数据' }}
+					{{ searchKeyword ? "没有找到匹配的分类" : "暂无分类数据" }}
 				</div>
-				<button v-if="!searchKeyword" class="empty-btn" @click="openCreateModal">
-					创建第一个分类
-				</button>
+				<button v-if="!searchKeyword" class="empty-btn" @click="openCreateModal">创建第一个分类</button>
 			</div>
 
 			<div v-for="category in filteredCategories" :key="category.id" class="category-item">
@@ -276,7 +264,7 @@ onMounted(() => {
 
 				<div class="category-description">
 					<div class="description-text">
-						{{ category.description || '暂无描述' }}
+						{{ category.description || "暂无描述" }}
 					</div>
 				</div>
 
@@ -289,15 +277,8 @@ onMounted(() => {
 				<div class="category-date">{{ category.createTime }}</div>
 
 				<div class="category-actions">
-					<button class="action-btn edit" @click="openEditModal(category)" title="编辑">
-						✏️
-					</button>
-					<button
-						class="action-btn delete"
-						@click="deleteCategory(category)"
-						:disabled="category.articleCount > 0"
-						:title="category.articleCount > 0 ? '该分类下有文章，无法删除' : '删除'"
-					>
+					<button class="action-btn edit" @click="openEditModal(category)" title="编辑">✏️</button>
+					<button class="action-btn delete" @click="deleteCategory(category)" :disabled="category.articleCount > 0" :title="category.articleCount > 0 ? '该分类下有文章，无法删除' : '删除'">
 						🗑️
 					</button>
 				</div>
@@ -306,35 +287,15 @@ onMounted(() => {
 
 		<!-- 分页组件 -->
 		<div v-if="filteredCategories.length > 0" class="pagination">
-			<div class="pagination-info">
-				共 {{ total }} 个分类，第 {{ currentPage }} / {{ Math.ceil(total / pageSize) }} 页
-			</div>
+			<div class="pagination-info">共 {{ total }} 个分类，第 {{ currentPage }} / {{ Math.ceil(total / pageSize) }} 页</div>
 			<div class="pagination-controls">
-				<button
-					class="page-btn"
-					:disabled="currentPage === 1"
-					@click="handlePageChange(currentPage - 1)"
-				>
-					上一页
-				</button>
+				<button class="page-btn" :disabled="currentPage === 1" @click="handlePageChange(currentPage - 1)">上一页</button>
 				<span class="page-numbers">
-					<button
-						v-for="page in Math.ceil(total / pageSize)"
-						:key="page"
-						class="page-number"
-						:class="{ active: page === currentPage }"
-						@click="handlePageChange(page)"
-					>
+					<button v-for="page in Math.ceil(total / pageSize)" :key="page" class="page-number" :class="{ active: page === currentPage }" @click="handlePageChange(page)">
 						{{ page }}
 					</button>
 				</span>
-				<button
-					class="page-btn"
-					:disabled="currentPage === Math.ceil(total / pageSize)"
-					@click="handlePageChange(currentPage + 1)"
-				>
-					下一页
-				</button>
+				<button class="page-btn" :disabled="currentPage === Math.ceil(total / pageSize)" @click="handlePageChange(currentPage + 1)">下一页</button>
 			</div>
 		</div>
 
@@ -343,7 +304,7 @@ onMounted(() => {
 			<div class="modal-content" @click.stop>
 				<div class="modal-header">
 					<h3 class="modal-title">
-						{{ editingCategory ? '编辑分类' : '新增分类' }}
+						{{ editingCategory ? "编辑分类" : "新增分类" }}
 					</h3>
 					<button class="modal-close" @click="closeModal">✕</button>
 				</div>
@@ -351,15 +312,7 @@ onMounted(() => {
 				<form @submit.prevent="saveCategory" class="modal-form">
 					<div class="form-group">
 						<label for="categoryName" class="form-label">分类名称 <span class="required">*</span></label>
-						<input
-							id="categoryName"
-							v-model="formData.name"
-							type="text"
-							class="form-input"
-							:class="{ 'error': formErrors.name }"
-							placeholder="请输入分类名称"
-							maxlength="50"
-						/>
+						<input id="categoryName" v-model="formData.name" type="text" class="form-input" :class="{ error: formErrors.name }" placeholder="请输入分类名称" maxlength="50" />
 						<div v-if="formErrors.name" class="error-text">{{ formErrors.name }}</div>
 						<div class="input-hint">{{ formData.name.length }}/50</div>
 					</div>
@@ -370,7 +323,7 @@ onMounted(() => {
 							id="categoryDescription"
 							v-model="formData.description"
 							class="form-textarea"
-							:class="{ 'error': formErrors.description }"
+							:class="{ error: formErrors.description }"
 							placeholder="请输入分类描述（可选）"
 							maxlength="200"
 							rows="4"
@@ -382,7 +335,7 @@ onMounted(() => {
 					<div class="form-actions">
 						<button type="button" class="cancel-btn" @click="closeModal">取消</button>
 						<button type="submit" class="submit-btn">
-							{{ editingCategory ? '更新' : '创建' }}
+							{{ editingCategory ? "更新" : "创建" }}
 						</button>
 					</div>
 				</form>
@@ -513,7 +466,9 @@ onMounted(() => {
 	display: flex;
 	align-items: center;
 	gap: 16px;
-	transition: transform 0.3s ease, box-shadow 0.3s ease;
+	transition:
+		transform 0.3s ease,
+		box-shadow 0.3s ease;
 }
 
 .stat-card:hover {
