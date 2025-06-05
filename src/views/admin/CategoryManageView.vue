@@ -278,9 +278,7 @@ onMounted(() => {
 
 				<div class="category-actions">
 					<button class="action-btn edit" @click="openEditModal(category)" title="编辑">✏️</button>
-					<button class="action-btn delete" @click="deleteCategory(category)" :disabled="category.articleCount > 0" :title="category.articleCount > 0 ? '该分类下有文章，无法删除' : '删除'">
-						🗑️
-					</button>
+					<button class="action-btn delete" @click="deleteCategory(category)" :disabled="category.articleCount > 0" :title="category.articleCount > 0 ? '该分类下有文章，无法删除' : '删除'">🗑️</button>
 				</div>
 			</div>
 		</div>
