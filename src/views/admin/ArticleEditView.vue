@@ -1,222 +1,5 @@
-<template>
-	<div class="article-edit">
-		<div class="page-header">
-			<div class="header-left">
-				<button class="back-btn" @click="goBack">
-					<span class="btn-icon">←</span>
-					返回
-				</button>
-				<h2 class="page-title">{{ isEditing ? "编辑文章" : "新建文章" }}</h2>
-			</div>
-			<div class="header-actions">
-				<button class="save-draft-btn" @click="saveDraft" :disabled="!articleForm.title.trim()">
-					<span class="btn-icon">💾</span>
-					保存草稿
-				</button>
-				<button class="publish-btn" @click="publishArticle" :disabled="!canPublish">
-					<span class="btn-icon">🚀</span>
-					{{ isEditing ? "更新" : "发布" }}
-				</button>
-			</div>
-		</div>
-
-		<div class="edit-container">
-			<!-- 左侧编辑区域 -->
-			<div class="edit-area">
-				<!-- 紧凑的标题区域 -->
-				<div class="title-section">
-					<input 
-						v-model="articleForm.title" 
-						type="text" 
-						class="title-input" 
-						:class="{ 'error': formErrors.title }"
-						placeholder="请输入文章标题..." 
-						maxlength="200"
-						@input="validateTitle"
-						@blur="validateTitle"
-					/>
-					<div v-if="formErrors.title" class="error-message">{{ formErrors.title }}</div>
-				</div>
-
-				<!-- Markdown编辑器 -->
-				<div class="editor-section">
-					<MdEditor
-						v-model="articleForm.content"
-						:height="editorHeight"
-						:theme="editorTheme"
-						:preview-theme="previewTheme"
-						:code-theme="codeTheme"
-						:toolbars="toolbars"
-						:footer-height="30"
-						@on-upload-img="onUploadImg"
-						@on-save="onSave"
-						@on-change="validateContent"
-						placeholder="开始写作吧..."
-					/>
-					<div v-if="formErrors.content" class="error-message">{{ formErrors.content }}</div>
-				</div>
-			</div>
-
-			<!-- 右侧设置面板 -->
-			<div class="settings-panel">
-				<!-- 基本信息 -->
-				<div class="panel-section">
-					<h3 class="section-title">基本信息</h3>
-					<div class="form-group">
-						<label class="form-label">文章摘要</label>
-						<textarea 
-							v-model="articleForm.summary" 
-							class="form-textarea compact" 
-							:class="{ 'error': formErrors.summary }"
-							placeholder="请输入文章摘要（可选）..." 
-							rows="2" 
-							maxlength="500"
-							@input="validateSummary"
-							@blur="validateSummary"
-						></textarea>
-						<div class="input-hint">{{ articleForm.summary.length }}/500</div>
-						<div v-if="formErrors.summary" class="error-message">{{ formErrors.summary }}</div>
-					</div>
-				</div>
-
-				<!-- 发布设置 -->
-				<div class="panel-section">
-					<h3 class="section-title">发布设置</h3>
-					<div class="form-group">
-						<label class="form-label">文章状态</label>
-						<select v-model="articleForm.status" class="form-select">
-							<option value="DRAFT">草稿</option>
-							<option value="PUBLISHED">已发布</option>
-							<option value="ARCHIVED">已归档</option>
-						</select>
-					</div>
-					<div class="form-group">
-						<div class="checkbox-group">
-							<label class="checkbox-item">
-								<input v-model="articleForm.isPinned" type="checkbox" class="checkbox" />
-								<span class="checkmark"></span>
-								<span class="checkbox-text">置顶文章</span>
-							</label>
-							<label class="checkbox-item">
-								<input v-model="articleForm.isOriginal" type="checkbox" class="checkbox" />
-								<span class="checkmark"></span>
-								<span class="checkbox-text">原创内容</span>
-							</label>
-							<label class="checkbox-item">
-								<input v-model="articleForm.allowComment" type="checkbox" class="checkbox" />
-								<span class="checkmark"></span>
-								<span class="checkbox-text">允许评论</span>
-							</label>
-						</div>
-					</div>
-				</div>
-
-				<!-- 分类和标签 -->
-				<div class="panel-section">
-					<h3 class="section-title">分类和标签</h3>
-					<div class="form-group">
-						<label class="form-label">文章分类</label>
-						<select 
-							v-model="articleForm.categoryId" 
-							class="form-select" 
-							:class="{ 'error': formErrors.categoryId }"
-							@change="validateCategory"
-						>
-							<option value="">请选择分类</option>
-							<option v-for="category in categories" :key="category.id" :value="category.id">
-								{{ category.name }}
-							</option>
-						</select>
-						<div v-if="formErrors.categoryId" class="error-message">{{ formErrors.categoryId }}</div>
-					</div>
-					<div class="form-group">
-						<label class="form-label">文章标签</label>
-						<div class="tag-input-container">
-							<input v-model="newTag" type="text" class="tag-input" placeholder="输入标签后按回车添加" @keyup.enter="addTag" @keyup.esc="newTag = ''" />
-							<button class="add-tag-btn" @click="addTag" :disabled="!newTag.trim()">添加</button>
-						</div>
-						<div class="selected-tags">
-							<span v-for="tag in articleForm.tags" :key="tag" class="tag-item">
-								{{ tag }}
-								<button class="remove-tag" @click="removeTag(tag)">✕</button>
-							</span>
-						</div>
-						<div v-if="formErrors.tags" class="error-message">{{ formErrors.tags }}</div>
-						<div class="tag-suggestions">
-							<span class="suggestions-label">推荐：</span>
-							<button v-for="tag in suggestedTags.slice(0, 6)" :key="tag" class="suggestion-tag" @click="addSuggestedTag(tag)" :disabled="articleForm.tags.includes(tag)">
-								{{ tag }}
-							</button>
-						</div>
-					</div>
-				</div>
-
-				<!-- 封面图片 -->
-				<div class="panel-section">
-					<h3 class="section-title">封面图片</h3>
-					<div class="form-group">
-						<div class="cover-upload">
-							<input ref="coverInput" type="file" accept="image/*" style="display: none" @change="handleCoverUpload" />
-							<div v-if="articleForm.coverImage" class="cover-preview">
-								<img :src="articleForm.coverImage" alt="封面预览" />
-								<button class="remove-cover" @click="removeCover">删除</button>
-							</div>
-							<button v-else class="upload-cover-btn" @click="$refs.coverInput.click()">
-								<span class="btn-icon">📷</span>
-								上传封面
-							</button>
-						</div>
-					</div>
-				</div>
-
-				<!-- SEO设置 -->
-				<div class="panel-section">
-					<h3 class="section-title">SEO设置</h3>
-					<div class="form-group">
-						<label class="form-label">SEO描述</label>
-						<textarea v-model="articleForm.metaDescription" class="form-textarea compact" placeholder="用于搜索引擎展示的描述..." rows="2" maxlength="300"></textarea>
-						<div class="input-hint">{{ articleForm.metaDescription.length }}/300</div>
-						<div v-if="formErrors.metaDescription" class="error-message">{{ formErrors.metaDescription }}</div>
-					</div>
-					<div class="form-group">
-						<label class="form-label">SEO关键词</label>
-						<input v-model="articleForm.metaKeywords" type="text" class="form-input" placeholder="关键词用逗号分隔" maxlength="200" />
-						<div v-if="formErrors.metaKeywords" class="error-message">{{ formErrors.metaKeywords }}</div>
-					</div>
-					<div class="form-group">
-						<label class="form-label">URL别名</label>
-						<input v-model="articleForm.slug" type="text" class="form-input" placeholder="自定义URL路径（可选）" />
-						<div v-if="formErrors.slug" class="error-message">{{ formErrors.slug }}</div>
-					</div>
-				</div>
-
-				<!-- 文章统计 -->
-				<div class="panel-section">
-					<h3 class="section-title">文章统计</h3>
-					<div class="stats-grid">
-						<div class="stat-item">
-							<span class="stat-label">字数</span>
-							<span class="stat-value">{{ wordCount }}</span>
-						</div>
-						<div class="stat-item">
-							<span class="stat-label">阅读时间</span>
-							<span class="stat-value">{{ readingTime }}分钟</span>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- 保存成功提示 -->
-		<div v-if="showSaveMessage" class="save-message">
-			<span class="save-icon">✅</span>
-			{{ saveMessage }}
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick } from "vue";
+import { ref, reactive, computed, onMounted, nextTick, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { MdEditor } from "md-editor-v3";
 import "md-editor-v3/lib/style.css";
@@ -279,7 +62,7 @@ const articleForm = reactive({
 	title: "",
 	summary: "",
 	content: "",
-	categoryId: "",
+	categoryId: null as number | null,
 	tags: [] as string[],
 	status: "DRAFT",
 	isPinned: false,
@@ -289,6 +72,8 @@ const articleForm = reactive({
 	metaKeywords: "",
 	slug: "",
 	coverImage: "",
+	wordCount: 0,
+	readingTime: 0,
 });
 
 // 常用标签建议
@@ -327,6 +112,16 @@ const validationRules = {
 	},
 	summary: {
 		maxLength: 500,
+	},
+	metaDescription: {
+		maxLength: 160,
+	},
+	metaKeywords: {
+		maxLength: 200,
+	},
+	slug: {
+		maxLength: 60,
+		pattern: /^[a-z0-9-]+$/,
 	},
 };
 
@@ -396,15 +191,57 @@ const validateSummary = () => {
 	return true;
 };
 
-// 验证表单
+// 实时验证SEO描述
+const validateMetaDescription = () => {
+	const desc = articleForm.metaDescription.trim();
+	if (desc.length > validationRules.metaDescription.maxLength) {
+		formErrors.metaDescription = `SEO描述不能超过${validationRules.metaDescription.maxLength}个字符`;
+		return false;
+	}
+	formErrors.metaDescription = "";
+	return true;
+};
+
+// 实时验证SEO关键词
+const validateMetaKeywords = () => {
+	const keywords = articleForm.metaKeywords.trim();
+	if (keywords.length > validationRules.metaKeywords.maxLength) {
+		formErrors.metaKeywords = `关键词总长度不能超过${validationRules.metaKeywords.maxLength}个字符`;
+		return false;
+	}
+	formErrors.metaKeywords = "";
+	return true;
+};
+
+// 实时验证URL别名
+const validateSlug = () => {
+	const slug = articleForm.slug.trim();
+	if (slug) {
+		if (slug.length > validationRules.slug.maxLength) {
+			formErrors.slug = `URL别名不能超过${validationRules.slug.maxLength}个字符`;
+			return false;
+		} else if (!validationRules.slug.pattern.test(slug)) {
+			formErrors.slug = "URL别名只能包含小写字母、数字和连字符(-)";
+			return false;
+		}
+	}
+	formErrors.slug = "";
+	return true;
+};
+
+// 修改验证表单方法
 const validateForm = (): boolean => {
 	const isTitleValid = validateTitle();
 	const isContentValid = validateContent();
 	const isCategoryValid = validateCategory();
 	const isTagsValid = validateTags();
 	const isSummaryValid = validateSummary();
+	const isMetaDescriptionValid = validateMetaDescription();
+	const isMetaKeywordsValid = validateMetaKeywords();
+	const isSlugValid = validateSlug();
 
-	return isTitleValid && isContentValid && isCategoryValid && isTagsValid && isSummaryValid;
+	return isTitleValid && isContentValid && isCategoryValid && isTagsValid && 
+		isSummaryValid && isMetaDescriptionValid && isMetaKeywordsValid && isSlugValid;
 };
 
 // 方法
@@ -444,7 +281,7 @@ const loadArticle = async (id: string) => {
 			title: article.title,
 			summary: article.summary || "",
 			content: article.content,
-			categoryId: article.categoryId?.toString() || "",
+			categoryId: article.categoryId,
 			tags: article.tags || [],
 			status: article.status,
 			isPinned: article.isPinned,
@@ -509,7 +346,6 @@ const saveArticle = async () => {
 
 		const articleData = {
 			...articleForm,
-			categoryId: articleForm.categoryId ? parseInt(articleForm.categoryId) : null,
 		};
 
 		if (isEditing.value) {
@@ -652,6 +488,261 @@ onMounted(() => {
 	}
 });
 </script>
+
+<template>
+	<div class="article-edit">
+		<div class="page-header">
+			<div class="header-left">
+				<button class="back-btn" @click="goBack">
+					<span class="btn-icon">←</span>
+					返回
+				</button>
+				<h2 class="page-title">{{ isEditing ? "编辑文章" : "新建文章" }}</h2>
+			</div>
+			<div class="header-actions">
+				<button class="save-draft-btn" @click="saveDraft" :disabled="!articleForm.title.trim()">
+					<span class="btn-icon">💾</span>
+					保存草稿
+				</button>
+				<button class="publish-btn" @click="publishArticle" :disabled="!canPublish">
+					<span class="btn-icon">🚀</span>
+					{{ isEditing ? "更新" : "发布" }}
+				</button>
+			</div>
+		</div>
+
+		<div class="edit-container">
+			<!-- 左侧编辑区域 -->
+			<div class="edit-area">
+				<!-- 紧凑的标题区域 -->
+				<div class="title-section">
+					<input 
+						v-model="articleForm.title" 
+						type="text" 
+						class="title-input" 
+						:class="{ 'error': formErrors.title }"
+						placeholder="请输入文章标题..." 
+						maxlength="200"
+						@input="validateTitle"
+						@blur="validateTitle"
+					/>
+					<div v-if="formErrors.title" class="error-message">{{ formErrors.title }}</div>
+				</div>
+
+				<!-- Markdown编辑器 -->
+				<div class="editor-section">
+					<MdEditor
+						v-model="articleForm.content"
+						:height="editorHeight"
+						:theme="editorTheme"
+						:preview-theme="previewTheme"
+						:code-theme="codeTheme"
+						:toolbars="toolbars"
+						:footer-height="30"
+						@on-upload-img="onUploadImg"
+						@on-save="onSave"
+						@on-change="validateContent"
+						placeholder="开始写作吧..."
+					/>
+					<div v-if="formErrors.content" class="error-message">{{ formErrors.content }}</div>
+				</div>
+			</div>
+
+			<!-- 右侧设置面板 -->
+			<div class="settings-panel">
+				<!-- 基本信息 -->
+				<div class="panel-section">
+					<h3 class="section-title">基本信息</h3>
+					<div class="form-group">
+						<label class="form-label">文章摘要</label>
+						<textarea 
+							v-model="articleForm.summary" 
+							class="form-textarea compact" 
+							:class="{ 'error': formErrors.summary }"
+							placeholder="请输入文章摘要（可选）..." 
+							rows="2" 
+							maxlength="500"
+							@input="validateSummary"
+							@blur="validateSummary"
+						></textarea>
+						<div class="input-hint">{{ articleForm.summary.length }}/500</div>
+						<div v-if="formErrors.summary" class="error-message">{{ formErrors.summary }}</div>
+					</div>
+				</div>
+
+				<!-- 发布设置 -->
+				<div class="panel-section">
+					<h3 class="section-title">发布设置</h3>
+					<div class="form-group">
+						<label class="form-label">文章状态</label>
+						<select v-model="articleForm.status" class="form-select">
+							<option value="DRAFT">草稿</option>
+							<option value="PUBLISHED">已发布</option>
+							<option value="ARCHIVED">已归档</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<div class="checkbox-group">
+							<label class="checkbox-item">
+								<input v-model="articleForm.isPinned" type="checkbox" class="checkbox" />
+								<span class="checkmark"></span>
+								<span class="checkbox-text">置顶文章</span>
+							</label>
+							<label class="checkbox-item">
+								<input v-model="articleForm.isOriginal" type="checkbox" class="checkbox" />
+								<span class="checkmark"></span>
+								<span class="checkbox-text">原创内容</span>
+							</label>
+							<label class="checkbox-item">
+								<input v-model="articleForm.allowComment" type="checkbox" class="checkbox" />
+								<span class="checkmark"></span>
+								<span class="checkbox-text">允许评论</span>
+							</label>
+						</div>
+					</div>
+				</div>
+
+				<!-- 分类和标签 -->
+				<div class="panel-section">
+					<h3 class="section-title">分类和标签</h3>
+					<div class="form-group">
+						<label class="form-label">文章分类</label>
+						<select 
+							v-model="articleForm.categoryId" 
+							class="form-select" 
+							:class="{ 'error': formErrors.categoryId }"
+							@change="validateCategory"
+						>
+							<option :value="null">请选择分类</option>
+							<option v-for="category in categories" :key="category.id" :value="category.id">
+								{{ category.name }}
+							</option>
+						</select>
+						<div v-if="formErrors.categoryId" class="error-message">{{ formErrors.categoryId }}</div>
+					</div>
+					<div class="form-group">
+						<label class="form-label">文章标签</label>
+						<div class="tag-input-container">
+							<input v-model="newTag" type="text" class="tag-input" placeholder="输入标签后按回车添加" @keyup.enter="addTag" @keyup.esc="newTag = ''" />
+							<button class="add-tag-btn" @click="addTag" :disabled="!newTag.trim()">添加</button>
+						</div>
+						<div class="selected-tags">
+							<span v-for="tag in articleForm.tags" :key="tag" class="tag-item">
+								{{ tag }}
+								<button class="remove-tag" @click="removeTag(tag)">✕</button>
+							</span>
+						</div>
+						<div v-if="formErrors.tags" class="error-message">{{ formErrors.tags }}</div>
+						<div class="tag-suggestions">
+							<span class="suggestions-label">推荐：</span>
+							<button v-for="tag in suggestedTags.slice(0, 6)" :key="tag" class="suggestion-tag" @click="addSuggestedTag(tag)" :disabled="articleForm.tags.includes(tag)">
+								{{ tag }}
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- 封面图片 -->
+				<div class="panel-section">
+					<h3 class="section-title">封面图片</h3>
+					<div class="form-group">
+						<div class="cover-upload">
+							<input ref="coverInput" type="file" accept="image/*" style="display: none" @change="handleCoverUpload" />
+							<div v-if="articleForm.coverImage" class="cover-preview">
+								<img :src="articleForm.coverImage" alt="封面预览" />
+								<button class="remove-cover" @click="removeCover">删除</button>
+							</div>
+							<button v-else class="upload-cover-btn" @click="$refs.coverInput.click()">
+								<span class="btn-icon">📷</span>
+								上传封面
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- SEO设置 -->
+				<div class="panel-section">
+					<h3 class="section-title">SEO设置</h3>
+					<div class="form-group">
+						<label class="form-label">SEO描述</label>
+						<textarea 
+							v-model="articleForm.metaDescription" 
+							class="form-textarea compact" 
+							:class="{ 'error': formErrors.metaDescription }"
+							placeholder="用于搜索引擎展示的描述，建议150-160个字符..." 
+							rows="2" 
+							maxlength="160"
+							@input="validateMetaDescription"
+							@blur="validateMetaDescription"
+						></textarea>
+						<div class="input-hint">
+							<span>{{ articleForm.metaDescription.length }}/160</span>
+							<span class="hint-text">建议：150-160字符，简明扼要描述文章内容</span>
+						</div>
+						<div v-if="formErrors.metaDescription" class="error-message">{{ formErrors.metaDescription }}</div>
+					</div>
+					<div class="form-group">
+						<label class="form-label">SEO关键词</label>
+						<input 
+							v-model="articleForm.metaKeywords" 
+							type="text" 
+							class="form-input" 
+							:class="{ 'error': formErrors.metaKeywords }"
+							placeholder="关键词用英文逗号分隔" 
+							maxlength="200"
+							@input="validateMetaKeywords"
+							@blur="validateMetaKeywords"
+						/>
+						<div class="input-hint">
+							<span class="hint-text">建议：使用英文逗号分隔关键词</span>
+						</div>
+						<div v-if="formErrors.metaKeywords" class="error-message">{{ formErrors.metaKeywords }}</div>
+					</div>
+					<div class="form-group">
+						<label class="form-label">URL别名</label>
+						<input 
+							v-model="articleForm.slug" 
+							type="text" 
+							class="form-input" 
+							:class="{ 'error': formErrors.slug }"
+							placeholder="自定义URL路径，只能包含小写字母、数字和连字符(-)" 
+							maxlength="60"
+							@input="validateSlug"
+							@blur="validateSlug"
+						/>
+						<div class="input-hint">
+							<span class="hint-text">建议：使用英文或拼音，用连字符(-)分隔</span>
+						</div>
+						<div v-if="formErrors.slug" class="error-message">{{ formErrors.slug }}</div>
+					</div>
+				</div>
+
+				<!-- 文章统计 -->
+				<div class="panel-section">
+					<h3 class="section-title">文章统计</h3>
+					<div class="stats-grid">
+						<div class="stat-item">
+							<span class="stat-label">字数</span>
+							<span class="stat-value">{{ wordCount }}</span>
+						</div>
+						<div class="stat-item">
+							<span class="stat-label">阅读时间</span>
+							<span class="stat-value">{{ readingTime }}分钟</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- 保存成功提示 -->
+		<div v-if="showSaveMessage" class="save-message">
+			<span class="save-icon">✅</span>
+			{{ saveMessage }}
+		</div>
+	</div>
+</template>
+
+
 
 <style scoped>
 .article-edit {
@@ -1300,5 +1391,39 @@ onMounted(() => {
 .editor-section .error-message {
 	margin-top: 8px;
 	padding: 0 16px;
+}
+
+.slug-input-group {
+	display: flex;
+	gap: 8px;
+}
+
+.generate-slug-btn {
+	padding: 8px;
+	background: var(--bg-tertiary);
+	border: 1px solid rgba(100, 255, 218, 0.1);
+	border-radius: 6px;
+	color: var(--text-secondary);
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.generate-slug-btn:hover {
+	color: var(--accent);
+	border-color: var(--accent);
+	background: rgba(100, 255, 218, 0.05);
+}
+
+.hint-text {
+	color: var(--text-secondary);
+	font-size: 11px;
+	margin-left: 8px;
+}
+
+.input-hint {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-top: 4px;
 }
 </style>
