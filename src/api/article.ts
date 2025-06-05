@@ -9,7 +9,7 @@ export const articleAPI = {
 	getArticle: (id: string) => api.get(`/articles/${id}`),
 
 	// 创建文章（需要认证）
-	createArticle: (article: any) => api.post("/admin/articles", article),
+	createArticle: (article: any) => api.post("/article/create-article", article),
 
 	// 更新文章（需要认证）
 	updateArticle: (id: string, article: any) => api.put(`/admin/articles/${id}`, article),
