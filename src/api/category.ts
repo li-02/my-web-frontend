@@ -3,7 +3,7 @@ import api from "@/api/index.ts";
 
 export const categoryAPI = {
 	// 获取所有分类（公开接口）
-	getCategories: () => api.get("/categories"),
+	getCategories: () => api.get("/category/categories"),
 
 	// 创建分类（需要认证）
 	createCategory: (category: { name: string; description?: string }) => api.post("/admin/categories", category),
