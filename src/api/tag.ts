@@ -3,7 +3,7 @@ import api from "@/api/index.ts";
 
 export const tagAPI = {
 	// 获取所有标签（公开接口）
-	getTags: () => api.get("/tags"),
+	getTags: () => api.get("/tag/tags"),
 
 	// 创建标签（需要认证）
 	createTag: (tag: { name: string }) => api.post("/admin/tags", tag),
