@@ -25,7 +25,17 @@
 			<div class="edit-area">
 				<!-- 紧凑的标题区域 -->
 				<div class="title-section">
-					<input v-model="articleForm.title" type="text" class="title-input" placeholder="请输入文章标题..." maxlength="200" />
+					<input 
+						v-model="articleForm.title" 
+						type="text" 
+						class="title-input" 
+						:class="{ 'error': formErrors.title }"
+						placeholder="请输入文章标题..." 
+						maxlength="200"
+						@input="validateTitle"
+						@blur="validateTitle"
+					/>
+					<div v-if="formErrors.title" class="error-message">{{ formErrors.title }}</div>
 				</div>
 
 				<!-- Markdown编辑器 -->
@@ -40,8 +50,10 @@
 						:footer-height="30"
 						@on-upload-img="onUploadImg"
 						@on-save="onSave"
+						@on-change="validateContent"
 						placeholder="开始写作吧..."
 					/>
+					<div v-if="formErrors.content" class="error-message">{{ formErrors.content }}</div>
 				</div>
 			</div>
 
@@ -52,8 +64,18 @@
 					<h3 class="section-title">基本信息</h3>
 					<div class="form-group">
 						<label class="form-label">文章摘要</label>
-						<textarea v-model="articleForm.summary" class="form-textarea compact" placeholder="请输入文章摘要（可选）..." rows="2" maxlength="500"></textarea>
+						<textarea 
+							v-model="articleForm.summary" 
+							class="form-textarea compact" 
+							:class="{ 'error': formErrors.summary }"
+							placeholder="请输入文章摘要（可选）..." 
+							rows="2" 
+							maxlength="500"
+							@input="validateSummary"
+							@blur="validateSummary"
+						></textarea>
 						<div class="input-hint">{{ articleForm.summary.length }}/500</div>
+						<div v-if="formErrors.summary" class="error-message">{{ formErrors.summary }}</div>
 					</div>
 				</div>
 
@@ -94,12 +116,18 @@
 					<h3 class="section-title">分类和标签</h3>
 					<div class="form-group">
 						<label class="form-label">文章分类</label>
-						<select v-model="articleForm.categoryId" class="form-select">
+						<select 
+							v-model="articleForm.categoryId" 
+							class="form-select" 
+							:class="{ 'error': formErrors.categoryId }"
+							@change="validateCategory"
+						>
 							<option value="">请选择分类</option>
 							<option v-for="category in categories" :key="category.id" :value="category.id">
 								{{ category.name }}
 							</option>
 						</select>
+						<div v-if="formErrors.categoryId" class="error-message">{{ formErrors.categoryId }}</div>
 					</div>
 					<div class="form-group">
 						<label class="form-label">文章标签</label>
@@ -113,6 +141,7 @@
 								<button class="remove-tag" @click="removeTag(tag)">✕</button>
 							</span>
 						</div>
+						<div v-if="formErrors.tags" class="error-message">{{ formErrors.tags }}</div>
 						<div class="tag-suggestions">
 							<span class="suggestions-label">推荐：</span>
 							<button v-for="tag in suggestedTags.slice(0, 6)" :key="tag" class="suggestion-tag" @click="addSuggestedTag(tag)" :disabled="articleForm.tags.includes(tag)">
@@ -147,14 +176,17 @@
 						<label class="form-label">SEO描述</label>
 						<textarea v-model="articleForm.metaDescription" class="form-textarea compact" placeholder="用于搜索引擎展示的描述..." rows="2" maxlength="300"></textarea>
 						<div class="input-hint">{{ articleForm.metaDescription.length }}/300</div>
+						<div v-if="formErrors.metaDescription" class="error-message">{{ formErrors.metaDescription }}</div>
 					</div>
 					<div class="form-group">
 						<label class="form-label">SEO关键词</label>
 						<input v-model="articleForm.metaKeywords" type="text" class="form-input" placeholder="关键词用逗号分隔" maxlength="200" />
+						<div v-if="formErrors.metaKeywords" class="error-message">{{ formErrors.metaKeywords }}</div>
 					</div>
 					<div class="form-group">
 						<label class="form-label">URL别名</label>
 						<input v-model="articleForm.slug" type="text" class="form-input" placeholder="自定义URL路径（可选）" />
+						<div v-if="formErrors.slug" class="error-message">{{ formErrors.slug }}</div>
 					</div>
 				</div>
 
@@ -191,6 +223,8 @@ import "md-editor-v3/lib/style.css";
 import { articleAPI } from "@/api/article.ts";
 import { categoryAPI } from "@/api/category.ts";
 import { uploadAPI } from "@/api/upload.ts";
+import type { Category } from "@/type/category";
+import { ElMessage } from "element-plus";
 
 const router = useRouter();
 const route = useRoute();
@@ -200,7 +234,7 @@ const isEditing = ref(false);
 const showSaveMessage = ref(false);
 const saveMessage = ref("");
 const newTag = ref("");
-const categories = ref<any[]>([]);
+const categories = ref<Category[]>([]);
 
 // 编辑器配置
 const editorHeight = ref("600px");
@@ -263,6 +297,39 @@ const suggestedTags = ref(["Vue.js", "Spring Boot", "JavaScript", "Java", "前�
 // 上传图片标识
 const isUploading = ref(false);
 const uploadProgress = ref<Map<number, number>>(new Map());
+
+// 表单验证相关的响应式数据
+const formErrors = reactive({
+	title: "",
+	content: "",
+	categoryId: "",
+	tags: "",
+	summary: "",
+	metaDescription: "",
+	metaKeywords: "",
+	slug: "",
+});
+
+// 验证规则
+const validationRules = {
+	title: {
+		required: true,
+		maxLength: 200,
+	},
+	content: {
+		required: true,
+	},
+	categoryId: {
+		required: true,
+	},
+	tags: {
+		maxCount: 10,
+	},
+	summary: {
+		maxLength: 500,
+	},
+};
+
 // 计算属性
 const canPublish = computed(() => {
 	return articleForm.title.trim() && articleForm.content.trim() && articleForm.categoryId;
@@ -275,6 +342,70 @@ const wordCount = computed(() => {
 const readingTime = computed(() => {
 	return Math.ceil(wordCount.value / 300);
 });
+
+// 实时验证标题
+const validateTitle = () => {
+	if (!articleForm.title.trim()) {
+		formErrors.title = "标题不能为空";
+		return false;
+	} else if (articleForm.title.length > validationRules.title.maxLength) {
+		formErrors.title = `标题长度不能超过${validationRules.title.maxLength}个字符`;
+		return false;
+	}
+	formErrors.title = "";
+	return true;
+};
+
+// 实时验证内容
+const validateContent = () => {
+	if (!articleForm.content.trim()) {
+		formErrors.content = "内容不能为空";
+		return false;
+	}
+	formErrors.content = "";
+	return true;
+};
+
+// 实时验证分类
+const validateCategory = () => {
+	if (!articleForm.categoryId) {
+		formErrors.categoryId = "请选择文章分类";
+		return false;
+	}
+	formErrors.categoryId = "";
+	return true;
+};
+
+// 实时验证标签
+const validateTags = () => {
+	if (articleForm.tags.length > validationRules.tags.maxCount) {
+		formErrors.tags = `标签数量不能超过${validationRules.tags.maxCount}个`;
+		return false;
+	}
+	formErrors.tags = "";
+	return true;
+};
+
+// 实时验证摘要
+const validateSummary = () => {
+	if (articleForm.summary.length > validationRules.summary.maxLength) {
+		formErrors.summary = `摘要长度不能超过${validationRules.summary.maxLength}个字符`;
+		return false;
+	}
+	formErrors.summary = "";
+	return true;
+};
+
+// 验证表单
+const validateForm = (): boolean => {
+	const isTitleValid = validateTitle();
+	const isContentValid = validateContent();
+	const isCategoryValid = validateCategory();
+	const isTagsValid = validateTags();
+	const isSummaryValid = validateSummary();
+
+	return isTitleValid && isContentValid && isCategoryValid && isTagsValid && isSummaryValid;
+};
 
 // 方法
 const goBack = () => {
@@ -293,33 +424,56 @@ const hasUnsavedChanges = () => {
 
 const loadCategories = async () => {
 	try {
-		// 模拟数据
-		categories.value = [
-			{ id: "1", name: "技术分享" },
-			{ id: "2", name: "前端开发" },
-			{ id: "3", name: "后端开发" },
-			{ id: "4", name: "数据库" },
-			{ id: "5", name: "架构设计" },
-		];
-	} catch (error) {
+		const response = await categoryAPI.getCategories();
+		console.log("这是所有的分类", response.data);
+		categories.value = response.data;
+	} catch (error: any) {
 		console.error("获取分类列表失败:", error);
+		showMessage(error.response?.data?.message || "获取分类列表失败","error");
 	}
 };
 
 const loadArticle = async (id: string) => {
 	try {
-		console.log("加载文章:", id);
-		// TODO: 调用API获取文章详情
-	} catch (error) {
+		const response = await articleAPI.getArticle(id);
+		const article = response.data;
+
+		// 更新表单数据
+		Object.assign(articleForm, {
+			id: article.id,
+			title: article.title,
+			summary: article.summary || "",
+			content: article.content,
+			categoryId: article.categoryId?.toString() || "",
+			tags: article.tags || [],
+			status: article.status,
+			isPinned: article.isPinned,
+			isOriginal: article.isOriginal,
+			allowComment: article.allowComment,
+			metaDescription: article.metaDescription || "",
+			metaKeywords: article.metaKeywords || "",
+			slug: article.slug || "",
+			coverImage: article.coverImage || "",
+		});
+	} catch (error: any) {
 		console.error("获取文章详情失败:", error);
+		showMessage(error.response?.data?.message || "获取文章详情失败","error");
+		router.push("/admin/articles");
 	}
 };
 
 const saveDraft = async () => {
 	try {
+		// 草稿模式下只验证标题
+		if (!articleForm.title.trim()) {
+			formErrors.title = "标题不能为空";
+			showMessage("请填写文章标题","warning");
+			return;
+		}
+
 		articleForm.status = "DRAFT";
 		await saveArticle();
-		showSaveToast("草稿保存成功");
+		showMessage("草稿保存成功","success");
 	} catch (error) {
 		console.error("保存草稿失败:", error);
 	}
@@ -327,9 +481,15 @@ const saveDraft = async () => {
 
 const publishArticle = async () => {
 	try {
+		// 先进行表单验证
+		if (!validateForm()) {
+			showMessage("请检查表单填写是否正确","warning");
+			return;
+		}
+
 		articleForm.status = "PUBLISHED";
 		await saveArticle();
-		showSaveToast(isEditing.value ? "文章更新成功" : "文章发布成功");
+		showMessage(isEditing.value ? "文章更新成功" : "文章发布成功","success");
 
 		setTimeout(() => {
 			router.push("/admin/articles");
@@ -340,12 +500,29 @@ const publishArticle = async () => {
 };
 
 const saveArticle = async () => {
-	const articleData = { ...articleForm };
+	try {
+		// 先进行表单验证
+		if (!validateForm()) {
+			showMessage("请检查表单填写是否正确","warning");
+			return;
+		}
 
-	if (isEditing.value) {
-		console.log("更新文章:", articleData);
-	} else {
-		console.log("创建文章:", articleData);
+		const articleData = {
+			...articleForm,
+			categoryId: articleForm.categoryId ? parseInt(articleForm.categoryId) : null,
+		};
+
+		if (isEditing.value) {
+			await articleAPI.updateArticle(articleForm.id!.toString(), articleData);
+		} else {
+			const response = await articleAPI.createArticle(articleData);
+			articleForm.id = response.data.id;
+			isEditing.value = true;
+		}
+	} catch (error: any) {
+		console.error("保存文章失败:", error);
+		showMessage(error.response?.data?.message || "保存失败，请重试","error");
+		throw error;
 	}
 };
 
@@ -354,6 +531,7 @@ const addTag = () => {
 	if (tag && !articleForm.tags.includes(tag)) {
 		articleForm.tags.push(tag);
 		newTag.value = "";
+		validateTags(); // 添加标签后验证
 	}
 };
 
@@ -361,12 +539,14 @@ const removeTag = (tag: string) => {
 	const index = articleForm.tags.indexOf(tag);
 	if (index > -1) {
 		articleForm.tags.splice(index, 1);
+		validateTags(); // 移除标签后验证
 	}
 };
 
 const addSuggestedTag = (tag: string) => {
 	if (!articleForm.tags.includes(tag)) {
 		articleForm.tags.push(tag);
+		validateTags(); // 添加推荐标签后验证
 	}
 };
 
@@ -386,12 +566,27 @@ const removeCover = () => {
 	articleForm.coverImage = "";
 };
 
-const showSaveToast = (message: string) => {
-	saveMessage.value = message;
-	showSaveMessage.value = true;
-	setTimeout(() => {
-		showSaveMessage.value = false;
-	}, 3000);
+// 根据type类型选择不同的message
+const showMessage = (message: string,type:string) => {
+	switch(type){
+		case "primary":
+			ElMessage.primary(message);
+			break;
+		case "success":
+			ElMessage.success(message);
+			break;
+		case "warning":
+			ElMessage.warning(message);
+			break;
+		case "info":
+			ElMessage.info(message);
+			break;
+		case "error":
+			ElMessage.error(message);
+			break;
+		default:
+			ElMessage.warning(message);
+	}
 };
 
 // md-editor-v3 回调函数
@@ -410,18 +605,18 @@ const onUploadImg = async (files: File[], callback: (urls: string[]) => void) =>
 				urls.push(result.data.url);
 			} else {
 				console.error("上传失败:", result.message);
-				showSaveToast(`文件上传失败: ${result.message}`);
+				showMessage(`文件上传失败: ${result.message}`,`error`);
 			}
 		}
 		// 清除进度信息
 		uploadProgress.value.clear();
 		if (urls.length > 0) {
-			showSaveToast("图片上传成功");
+			showMessage("图片上传成功","success");
 			callback(urls);
 		}
 	} catch (error) {
 		console.error("图片上传失败:", error);
-		showSaveToast("图片上传失败，请重试");
+		showMessage("图片上传失败，请重试","error");
 	} finally {
 		isUploading.value = false;
 		uploadProgress.value.clear();
@@ -1077,5 +1272,33 @@ onMounted(() => {
 	background: var(--bg-tertiary) !important;
 	border-top: 1px solid rgba(100, 255, 218, 0.1) !important;
 	color: var(--text-secondary) !important;
+}
+
+/* 错误提示样式 */
+.error-message {
+	color: #ff4d4f;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.form-select.error,
+.form-input.error,
+.form-textarea.error {
+	border-color: #ff4d4f;
+}
+
+.form-select.error:focus,
+.form-input.error:focus,
+.form-textarea.error:focus {
+	box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.1);
+}
+
+.title-section .error-message {
+	margin-top: 8px;
+}
+
+.editor-section .error-message {
+	margin-top: 8px;
+	padding: 0 16px;
 }
 </style>
