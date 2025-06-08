@@ -1,0 +1,9 @@
+---
+description: 
+globs: src/api/*.ts
+alwaysApply: false
+---
+1. 你应该按照请求的功能创建相应的分类文件，该文件中编写所有相关的接口
+
+
+2. 接口的url地址前缀应该是当前的分类的名称
