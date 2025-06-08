@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
-import HomeView from "../views/HomeView.vue";
+import HomeView from "../views/front/HomeView.vue";
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.BASE_URL),
@@ -8,6 +8,22 @@ const router = createRouter({
 			path: "/",
 			name: "home",
 			component: HomeView,
+		},
+		{
+			path: "/articles",
+			name: "articles",
+			component: () => import("../views/front/ArticleListView.vue"),
+			meta: {
+				title: "文章列表",
+			},
+		},
+		{
+			path: "/articles/:id",
+			name: "article-detail",
+			component: () => import("../views/front/ArticleDetailView.vue"),
+			meta: {
+				title: "文章详情",
+			},
 		},
 		{
 			path: "/dreamory-admin-login",
