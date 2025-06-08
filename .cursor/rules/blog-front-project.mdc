@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+1. 你应该始终保持所有的组件设计风格一致
+
+- 技术栈：使用vue3 + Typescript开发，组件统一采用 Composition API编写，确保类型安全与代码可维护性
+
+- 状态管理：使用pinia进行全局状态管理，按功能模块划分store，保持状态逻辑清晰
+
+- 路由导航：使用Vue Router管理页面导航
+
+
+- 使用echarts绘制图表
