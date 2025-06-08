@@ -1,60 +1,52 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
+import { articleAPI } from "@/api/article.ts";
+import { categoryAPI } from "@/api/category.ts";
+import { ElMessage, ElMessageBox } from "element-plus";
+
+// 定义文章类型（匹配数据库字段）
+interface Article {
+	id: number;
+	title: string;
+	slug?: string;
+	content?: string;
+	summary?: string;
+	coverImage?: string;
+	viewCount: number;
+	likeCount: number;
+	commentCount: number;
+	readingTime: number;
+	createTime: string;
+	updateTime: string;
+	publishTime?: string;
+	status: string;
+	categoryId?: number;
+	categoryName?: string; // 关联查询得到的分类名称
+	isPinned: boolean;
+	isAllowComment: boolean;
+	isOriginal: boolean;
+	accessType: string;
+	password?: string;
+	metaDescription?: string;
+	metaKeywords?: string;
+	wordCount?: number;
+	tags?: string[]; // 标签数组（关联查询得到）
+}
+
+// 定义分类类型
+interface Category {
+	id: number;
+	name: string;
+	description?: string;
+}
 
 const router = useRouter();
 
 // 文章列表数据
-const articles = ref([
-	{
-		id: 1,
-		title: "Spring Boot 3.0 新特性深度解析",
-		status: "PUBLISHED",
-		category: "技术分享",
-		tags: ["Spring Boot", "Java", "后端"],
-		views: 1250,
-		createTime: "2024-03-15",
-		updateTime: "2024-03-15",
-		isOriginal: true,
-		isPinned: false,
-	},
-	{
-		id: 2,
-		title: "Vue 3 Composition API 最佳实践",
-		status: "DRAFT",
-		category: "前端开发",
-		tags: ["Vue", "JavaScript", "前端"],
-		views: 0,
-		createTime: "2024-03-12",
-		updateTime: "2024-03-14",
-		isOriginal: true,
-		isPinned: false,
-	},
-	{
-		id: 3,
-		title: "MySQL 8.0 性能优化实战指南",
-		status: "PUBLISHED",
-		category: "数据库",
-		tags: ["MySQL", "数据库", "性能优化"],
-		views: 856,
-		createTime: "2024-03-08",
-		updateTime: "2024-03-10",
-		isOriginal: true,
-		isPinned: true,
-	},
-	{
-		id: 4,
-		title: "微服务架构设计模式与实践",
-		status: "ARCHIVED",
-		category: "架构设计",
-		tags: ["微服务", "架构", "设计模式"],
-		views: 432,
-		createTime: "2024-03-05",
-		updateTime: "2024-03-05",
-		isOriginal: true,
-		isPinned: false,
-	},
-]);
+const articles = ref<Article[]>([]);
+const loading = ref(false);
+const categories = ref<Category[]>([]);
 
 // 搜索和筛选
 const searchKeyword = ref("");
@@ -77,14 +69,14 @@ const statusOptions = [
 	{ label: "已归档", value: "ARCHIVED" },
 ];
 
-// 分类选项
-const categoryOptions = [
-	{ label: "全部分类", value: "" },
-	{ label: "技术分享", value: "技术分享" },
-	{ label: "前端开发", value: "前端开发" },
-	{ label: "数据库", value: "数据库" },
-	{ label: "架构设计", value: "架构设计" },
-];
+// 动态分类选项
+const categoryOptions = computed(() => {
+	const options = [{ label: "全部分类", value: "" }];
+	categories.value.forEach(category => {
+		options.push({ label: category.name, value: category.name });
+	});
+	return options;
+});
 
 // 获取状态显示文本
 const getStatusText = (status: string) => {
@@ -117,66 +109,118 @@ const editArticle = (id: number) => {
 };
 
 // 切换置顶状态
-const togglePin = (article: any) => {
-	article.isPinned = !article.isPinned;
-	// TODO: 调用API更新置顶状态
-	console.log(`文章 ${article.id} 置顶状态：${article.isPinned}`);
+const togglePin = async (article: Article) => {
+	try {
+		const newPinStatus = !article.isPinned;
+		await articleAPI.updatePinStatus(article.id.toString(), newPinStatus);
+		
+		article.isPinned = newPinStatus;
+		ElMessage.success(`文章${newPinStatus ? '置顶' : '取消置顶'}成功`);
+	} catch (error: any) {
+		console.error("更新置顶状态失败:", error);
+		ElMessage.error("更新置顶状态失败");
+	}
 };
 
 // 切换发布状态
-const togglePublish = (article: any) => {
-	const newStatus = article.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
-	article.status = newStatus;
-	// TODO: 调用API更新发布状态
-	console.log(`文章 ${article.id} 状态更新为：${newStatus}`);
+const togglePublish = async (article: Article) => {
+	try {
+		const newStatus = article.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
+		await articleAPI.updatePublishStatus(article.id.toString(), newStatus);
+		
+		article.status = newStatus;
+		const statusText = newStatus === "PUBLISHED" ? "发布" : "设为草稿";
+		ElMessage.success(`文章${statusText}成功`);
+	} catch (error: any) {
+		console.error("更新发布状态失败:", error);
+		ElMessage.error("更新发布状态失败");
+	}
 };
 
 // 删除文章
-const deleteArticle = (id: number) => {
-	if (confirm("确定要删除这篇文章吗？")) {
-		const index = articles.value.findIndex((article) => article.id === id);
-		if (index > -1) {
-			articles.value.splice(index, 1);
-			total.value--;
+const deleteArticle = async (id: number) => {
+	try {
+		await ElMessageBox.confirm(
+			'确定要删除这篇文章吗？此操作不可撤销。',
+			'删除确认',
+			{
+				confirmButtonText: '删除',
+				cancelButtonText: '取消',
+				type: 'warning',
+			}
+		);
+		
+		await articleAPI.deleteArticle(id.toString());
+		ElMessage.success('文章删除成功');
+		
+		// 重新加载文章列表
+		await loadArticles();
+	} catch (error: any) {
+		if (error !== 'cancel') {
+			console.error("删除文章失败:", error);
+			ElMessage.error(error.response?.data?.message || "删除文章失败");
 		}
-		// TODO: 调用API删除文章
-		console.log(`删除文章 ${id}`);
 	}
 };
 
 // 批量操作
-const batchPublish = () => {
+const batchPublish = async () => {
 	if (selectedArticles.value.length === 0) {
-		alert("请选择要操作的文章");
+		ElMessage.warning("请选择要操作的文章");
 		return;
 	}
-	if (confirm(`确定要批量发布 ${selectedArticles.value.length} 篇文章吗？`)) {
-		selectedArticles.value.forEach((id) => {
-			const article = articles.value.find((a) => a.id === id);
-			if (article) {
-				article.status = "PUBLISHED";
+	
+	try {
+		await ElMessageBox.confirm(
+			`确定要批量发布 ${selectedArticles.value.length} 篇文章吗？`,
+			'批量发布确认',
+			{
+				confirmButtonText: '发布',
+				cancelButtonText: '取消',
+				type: 'info',
 			}
-		});
+		);
+		
+		await articleAPI.batchUpdateStatus(selectedArticles.value, 'PUBLISHED');
+		
 		selectedArticles.value = [];
-		console.log("批量发布完成");
+		ElMessage.success("批量发布成功");
+		await loadArticles();
+	} catch (error: any) {
+		if (error !== 'cancel') {
+			console.error("批量发布失败:", error);
+			ElMessage.error("批量发布失败");
+		}
 	}
 };
 
-const batchDelete = () => {
+const batchDelete = async () => {
 	if (selectedArticles.value.length === 0) {
-		alert("请选择要删除的文章");
+		ElMessage.warning("请选择要删除的文章");
 		return;
 	}
-	if (confirm(`确定要删除 ${selectedArticles.value.length} 篇文章吗？`)) {
-		selectedArticles.value.forEach((id) => {
-			const index = articles.value.findIndex((a) => a.id === id);
-			if (index > -1) {
-				articles.value.splice(index, 1);
-				total.value--;
+	
+	try {
+		await ElMessageBox.confirm(
+			`确定要删除 ${selectedArticles.value.length} 篇文章吗？此操作不可撤销。`,
+			'批量删除确认',
+			{
+				confirmButtonText: '删除',
+				cancelButtonText: '取消',
+				type: 'warning',
 			}
-		});
+		);
+		
+		await articleAPI.batchDelete(selectedArticles.value);
+		
 		selectedArticles.value = [];
-		console.log("批量删除完成");
+		ElMessage.success("批量删除成功");
+		await loadArticles();
+	} catch (error: any) {
+		if (error !== 'cancel') {
+			console.error("批量删除失败:", error);
+			ElMessage.error("批量删除失败");
+		}
 	}
 };
 
@@ -191,14 +235,6 @@ const toggleSelectAll = () => {
 	isAllSelected.value = !isAllSelected.value;
 };
 
-// 搜索文章
-const searchArticles = () => {
-	// TODO: 实现搜索逻辑
-	console.log("搜索关键词：", searchKeyword.value);
-	console.log("筛选状态：", selectedStatus.value);
-	console.log("筛选分类：", selectedCategory.value);
-};
-
 // 重置筛选
 const resetFilters = () => {
 	searchKeyword.value = "";
@@ -207,17 +243,81 @@ const resetFilters = () => {
 	searchArticles();
 };
 
+// 加载文章列表
+const loadArticles = async () => {
+	try {
+		loading.value = true;
+		const params: any = {
+			page: currentPage.value - 1, // 后端通常从0开始
+			size: pageSize.value,
+		};
+		
+		// 添加搜索和筛选条件
+		if (searchKeyword.value.trim()) {
+			params.keyword = searchKeyword.value.trim();
+		}
+		if (selectedStatus.value) {
+			params.status = selectedStatus.value;
+		}
+		if (selectedCategory.value) {
+			// 根据分类名称找到分类ID
+			const category = categories.value.find(cat => cat.name === selectedCategory.value);
+			if (category) {
+				params.categoryId = category.id;
+			}
+		}
+		
+		const response = await articleAPI.getArticles(params);
+		articles.value = response.data.content || response.data;
+		total.value = response.data.totalElements || response.data.length;
+		
+		console.log("文章列表加载成功:", response.data);
+	} catch (error: any) {
+		console.error("获取文章列表失败:", error);
+		ElMessage.error(error.response?.data?.message || "获取文章列表失败");
+	} finally {
+		loading.value = false;
+	}
+};
+
+// 加载分类列表
+const loadCategories = async () => {
+	try {
+		const response = await categoryAPI.getCategories();
+		categories.value = response.data;
+		console.log("分类列表加载成功:", response.data);
+	} catch (error: any) {
+		console.error("获取分类列表失败:", error);
+		ElMessage.error(error.response?.data?.message || "获取分类列表失败");
+	}
+};
+
+// 搜索文章
+const searchArticles = async () => {
+	currentPage.value = 1; // 重置到第一页
+	await loadArticles();
+};
+
 // 分页改变
 const handlePageChange = (page: number) => {
 	currentPage.value = page;
-	// TODO: 重新加载数据
-	console.log("切换到第", page, "页");
+	loadArticles();
 };
 
+// 监听搜索关键字变化
+watch(searchKeyword, (newValue, oldValue) => {
+	// 当搜索框被清空时，自动重新搜索
+	if (oldValue && oldValue.trim() && (!newValue || !newValue.trim())) {
+		searchArticles();
+	}
+});
+
 // 组件挂载时获取数据
-onMounted(() => {
-	// TODO: 调用API获取文章列表
-	// loadArticles()
+onMounted(async () => {
+	await Promise.all([
+		loadCategories(),
+		loadArticles()
+	]);
 });
 </script>
 
@@ -266,8 +366,26 @@ onMounted(() => {
 			</div>
 		</div>
 
+		<!-- 加载状态 -->
+		<div v-if="loading" class="loading-state">
+			<div class="loading-spinner">⏳</div>
+			<div class="loading-text">正在加载文章列表...</div>
+		</div>
+
+		<!-- 空状态 -->
+		<div v-else-if="articles.length === 0" class="empty-state">
+			<div class="empty-icon">📝</div>
+			<div class="empty-title">暂无文章</div>
+			<div class="empty-description">
+				{{ searchKeyword || selectedStatus || selectedCategory ? '没有找到匹配的文章' : '还没有发布任何文章，点击上方按钮创建第一篇文章吧！' }}
+			</div>
+			<button v-if="!searchKeyword && !selectedStatus && !selectedCategory" class="empty-btn" @click="createArticle">
+				创建第一篇文章
+			</button>
+		</div>
+
 		<!-- 文章列表 -->
-		<div class="article-list">
+		<div v-else class="article-list">
 			<div class="list-header">
 				<label class="select-all">
 					<input v-model="isAllSelected" type="checkbox" @change="toggleSelectAll" />
@@ -304,9 +422,9 @@ onMounted(() => {
 					</span>
 				</div>
 
-				<div class="article-category">{{ article.category }}</div>
+				<div class="article-category">{{ article.categoryName || '未分类' }}</div>
 
-				<div class="article-views">{{ article.views }}</div>
+				<div class="article-views">{{ article.viewCount }}</div>
 
 				<div class="article-date">{{ article.updateTime }}</div>
 
@@ -324,7 +442,7 @@ onMounted(() => {
 		</div>
 
 		<!-- 分页组件 -->
-		<div class="pagination">
+		<div v-if="articles.length > 0" class="pagination">
 			<div class="pagination-info">共 {{ total }} 篇文章，第 {{ currentPage }} / {{ Math.ceil(total / pageSize) }} 页</div>
 			<div class="pagination-controls">
 				<button class="page-btn" :disabled="currentPage === 1" @click="handlePageChange(currentPage - 1)">上一页</button>
@@ -792,6 +910,78 @@ onMounted(() => {
 	background: var(--accent);
 	color: var(--bg-primary);
 	border-color: var(--accent);
+}
+
+/* 加载状态 */
+.loading-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 60px 20px;
+	color: var(--text-secondary);
+}
+
+.loading-spinner {
+	font-size: 32px;
+	margin-bottom: 16px;
+	animation: spin 2s linear infinite;
+}
+
+.loading-text {
+	font-size: 16px;
+	color: var(--text-secondary);
+}
+
+@keyframes spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+/* 空状态 */
+.empty-state {
+	text-align: center;
+	padding: 60px 20px;
+	color: var(--text-secondary);
+	background: rgba(26, 35, 50, 0.8);
+	border-radius: 12px;
+	border: 1px solid rgba(100, 255, 218, 0.1);
+	margin-bottom: 24px;
+}
+
+.empty-icon {
+	font-size: 48px;
+	margin-bottom: 16px;
+}
+
+.empty-title {
+	font-size: 18px;
+	font-weight: 500;
+	color: var(--text-primary);
+	margin-bottom: 8px;
+}
+
+.empty-description {
+	font-size: 14px;
+	line-height: 1.5;
+	margin-bottom: 24px;
+}
+
+.empty-btn {
+	padding: 12px 24px;
+	background: var(--accent);
+	color: var(--bg-primary);
+	border: none;
+	border-radius: 8px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.empty-btn:hover {
+	background: var(--accent-hover);
+	transform: translateY(-1px);
+	box-shadow: 0 4px 12px rgba(100, 255, 218, 0.3);
 }
 
 /* 响应式设计 */
