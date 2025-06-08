@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { MdEditor } from "md-editor-v3";
+import { MdEditor, type Themes, type ToolbarNames } from "md-editor-v3";
 import "md-editor-v3/lib/style.css";
 import { articleAPI } from "@/api/article.ts";
 import { categoryAPI } from "@/api/category.ts";
 import { uploadAPI } from "@/api/upload.ts";
+import { tagAPI } from "@/api/tag.ts";
 import type { Category } from "@/type/category";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 
 const router = useRouter();
 const route = useRoute();
@@ -19,14 +20,20 @@ const saveMessage = ref("");
 const newTag = ref("");
 const categories = ref<Category[]>([]);
 
+// 标签相关数据
+const allTags = ref<string[]>([]);
+const popularTags = ref<string[]>([]);
+const tagSearchResults = ref<string[]>([]);
+const isSearchingTags = ref(false);
+
 // 编辑器配置
 const editorHeight = ref("600px");
-const editorTheme = ref("dark");
+const editorTheme = ref<Themes>("dark");
 const previewTheme = ref("github");
 const codeTheme = ref("atom");
 
 // 工具栏配置
-const toolbars = [
+const toolbars: ToolbarNames[] = [
 	"bold",
 	"underline",
 	"italic",
@@ -76,12 +83,19 @@ const articleForm = reactive({
 	readingTime: 0,
 });
 
-// 常用标签建议
-const suggestedTags = ref(["Vue.js", "Spring Boot", "JavaScript", "Java", "前端开发", "后端开发", "数据库", "MySQL", "Redis", "微服务", "架构设计", "性能优化"]);
+// 动态推荐标签
+const suggestedTags = computed(() => {
+	// 优先显示热门标签，如果没有则显示所有标签的前12个
+	const tags = popularTags.value.length > 0 ? popularTags.value : allTags.value;
+	return tags.slice(0, 12);
+});
 
 // 上传图片标识
 const isUploading = ref(false);
 const uploadProgress = ref<Map<number, number>>(new Map());
+
+// 封面上传 ref
+const coverInput = ref<HTMLInputElement>();
 
 // 表单验证相关的响应式数据
 const formErrors = reactive({
@@ -266,7 +280,29 @@ const loadCategories = async () => {
 		categories.value = response.data;
 	} catch (error: any) {
 		console.error("获取分类列表失败:", error);
-		showMessage(error.response?.data?.message || "获取分类列表失败","error");
+		ElMessage.error(error.response?.data?.message || "获取分类列表失败");
+	}
+};
+
+// 加载所有标签
+const loadAllTags = async () => {
+	try {
+		const response = await tagAPI.getTags();
+		allTags.value = response.data.map((tag: any) => tag.name);
+	} catch (error: any) {
+		console.error("获取标签列表失败:", error);
+	}
+};
+
+// 加载热门标签
+const loadPopularTags = async () => {
+	try {
+		const response = await tagAPI.getPopularTags(10);
+		popularTags.value = response.data.map((tag: any) => tag.name);
+	} catch (error: any) {
+		console.error("获取热门标签失败:", error);
+		// 如果获取热门标签失败，使用所有标签作为备选
+		await loadAllTags();
 	}
 };
 
@@ -294,7 +330,7 @@ const loadArticle = async (id: string) => {
 		});
 	} catch (error: any) {
 		console.error("获取文章详情失败:", error);
-		showMessage(error.response?.data?.message || "获取文章详情失败","error");
+		ElMessage.error(error.response?.data?.message || "获取文章详情失败");
 		router.push("/admin/articles");
 	}
 };
@@ -304,13 +340,13 @@ const saveDraft = async () => {
 		// 草稿模式下只验证标题
 		if (!articleForm.title.trim()) {
 			formErrors.title = "标题不能为空";
-			showMessage("请填写文章标题","warning");
+			ElMessage.warning("请填写文章标题");
 			return;
 		}
 
 		articleForm.status = "DRAFT";
 		await saveArticle();
-		showMessage("草稿保存成功","success");
+		ElMessage.success("草稿保存成功");
 	} catch (error) {
 		console.error("保存草稿失败:", error);
 	}
@@ -320,13 +356,13 @@ const publishArticle = async () => {
 	try {
 		// 先进行表单验证
 		if (!validateForm()) {
-			showMessage("请检查表单填写是否正确","warning");
+			ElMessage.warning("请检查表单填写是否正确");
 			return;
 		}
 
 		articleForm.status = "PUBLISHED";
 		await saveArticle();
-		showMessage(isEditing.value ? "文章更新成功" : "文章发布成功","success");
+		ElMessage.success(isEditing.value ? "文章更新成功" : "文章发布成功");
 
 		setTimeout(() => {
 			router.push("/admin/articles");
@@ -340,9 +376,13 @@ const saveArticle = async () => {
 	try {
 		// 先进行表单验证
 		if (!validateForm()) {
-			showMessage("请检查表单填写是否正确","warning");
+			ElMessage.warning("请检查表单填写是否正确");
 			return;
 		}
+
+		// 更新字数和阅读时间
+		articleForm.wordCount = wordCount.value;
+		articleForm.readingTime = readingTime.value;
 
 		const articleData = {
 			...articleForm,
@@ -357,18 +397,103 @@ const saveArticle = async () => {
 		}
 	} catch (error: any) {
 		console.error("保存文章失败:", error);
-		showMessage(error.response?.data?.message || "保存失败，请重试","error");
+		ElMessage.error(error.response?.data?.message || "保存失败，请重试");
 		throw error;
 	}
 };
 
-const addTag = () => {
-	const tag = newTag.value.trim();
-	if (tag && !articleForm.tags.includes(tag)) {
-		articleForm.tags.push(tag);
-		newTag.value = "";
-		validateTags(); // 添加标签后验证
+// 防抖搜索
+let searchTimeout: number | null = null;
+
+// 搜索标签（实时搜索）
+const searchTags = (keyword: string) => {
+	// 清除之前的搜索定时器
+	if (searchTimeout) {
+		clearTimeout(searchTimeout);
 	}
+	
+	if (!keyword.trim()) {
+		tagSearchResults.value = [];
+		return;
+	}
+	
+	// 设置新的搜索定时器（防抖）
+	searchTimeout = setTimeout(async () => {
+		try {
+			isSearchingTags.value = true;
+			const response = await tagAPI.searchTags(keyword);
+			tagSearchResults.value = response.data.map((tag: any) => tag.name);
+		} catch (error: any) {
+			console.error("搜索标签失败:", error);
+		} finally {
+			isSearchingTags.value = false;
+		}
+	}, 300); // 300ms 防抖延迟
+};
+
+const addTag = async () => {
+	const tag = newTag.value.trim();
+	
+	// 验证标签输入
+	if (!tag) {
+		ElMessage.warning("请输入标签名称");
+		return;
+	}
+	
+	if (articleForm.tags.includes(tag)) {
+		ElMessage.warning(`标签 "${tag}" 已存在`);
+		return;
+	}
+	
+	// 检查标签数量限制
+	if (articleForm.tags.length >= validationRules.tags.maxCount) {
+		ElMessage.warning(`最多只能添加 ${validationRules.tags.maxCount} 个标签`);
+		return;
+	}
+
+	// 检查标签是否存在于数据库中
+	const tagExists = allTags.value.includes(tag) || popularTags.value.includes(tag);
+	
+	if (!tagExists) {
+		// 使用 Element Plus 的确认对话框
+		try {
+			await ElMessageBox.confirm(
+				`标签 "${tag}" 不存在，是否创建新标签？`,
+				'创建新标签',
+				{
+					confirmButtonText: '创建',
+					cancelButtonText: '取消',
+					type: 'info',
+					customClass: 'create-tag-dialog'
+				}
+			);
+			
+			// 用户确认创建新标签
+			try {
+				await tagAPI.createTag(tag);
+				// 创建成功后添加到本地标签列表
+				allTags.value.push(tag);
+				ElMessage.success(`标签 "${tag}" 创建成功`);
+			} catch (error: any) {
+				console.error("创建标签失败:", error);
+				ElMessage.error(error.response?.data?.message || "创建标签失败，请重试");
+				return;
+			}
+		} catch {
+			// 用户取消创建
+			ElMessage.info("已取消创建标签");
+			return;
+		}
+	}
+
+	// 添加标签到文章
+	articleForm.tags.push(tag);
+	newTag.value = "";
+	tagSearchResults.value = [];
+	validateTags();
+	
+	// 成功添加提示
+	ElMessage.success(`标签 "${tag}" 添加成功`);
 };
 
 const removeTag = (tag: string) => {
@@ -376,13 +501,42 @@ const removeTag = (tag: string) => {
 	if (index > -1) {
 		articleForm.tags.splice(index, 1);
 		validateTags(); // 移除标签后验证
+		ElMessage.success(`标签 "${tag}" 移除成功`);
 	}
 };
 
 const addSuggestedTag = (tag: string) => {
+	// 检查标签数量限制
+	if (articleForm.tags.length >= validationRules.tags.maxCount) {
+		ElMessage.warning(`最多只能添加 ${validationRules.tags.maxCount} 个标签`);
+		return;
+	}
+	
 	if (!articleForm.tags.includes(tag)) {
 		articleForm.tags.push(tag);
 		validateTags(); // 添加推荐标签后验证
+		ElMessage.success(`标签 "${tag}" 添加成功`);
+	} else {
+		ElMessage.warning(`标签 "${tag}" 已存在`);
+	}
+};
+
+// 从搜索结果中选择标签
+const selectSearchedTag = (tag: string) => {
+	// 检查标签数量限制
+	if (articleForm.tags.length >= validationRules.tags.maxCount) {
+		ElMessage.warning(`最多只能添加 ${validationRules.tags.maxCount} 个标签`);
+		return;
+	}
+	
+	if (!articleForm.tags.includes(tag)) {
+		articleForm.tags.push(tag);
+		newTag.value = "";
+		tagSearchResults.value = [];
+		validateTags();
+		ElMessage.success(`标签 "${tag}" 添加成功`);
+	} else {
+		ElMessage.warning(`标签 "${tag}" 已存在`);
 	}
 };
 
@@ -402,28 +556,6 @@ const removeCover = () => {
 	articleForm.coverImage = "";
 };
 
-// 根据type类型选择不同的message
-const showMessage = (message: string,type:string) => {
-	switch(type){
-		case "primary":
-			ElMessage.primary(message);
-			break;
-		case "success":
-			ElMessage.success(message);
-			break;
-		case "warning":
-			ElMessage.warning(message);
-			break;
-		case "info":
-			ElMessage.info(message);
-			break;
-		case "error":
-			ElMessage.error(message);
-			break;
-		default:
-			ElMessage.warning(message);
-	}
-};
 
 // md-editor-v3 回调函数
 const onUploadImg = async (files: File[], callback: (urls: string[]) => void) => {
@@ -441,18 +573,18 @@ const onUploadImg = async (files: File[], callback: (urls: string[]) => void) =>
 				urls.push(result.data.url);
 			} else {
 				console.error("上传失败:", result.message);
-				showMessage(`文件上传失败: ${result.message}`,`error`);
+				ElMessage.error(`文件上传失败: ${result.message}`);
 			}
 		}
 		// 清除进度信息
 		uploadProgress.value.clear();
 		if (urls.length > 0) {
-			showMessage("图片上传成功","success");
+			ElMessage.success("图片上传成功");
 			callback(urls);
 		}
 	} catch (error) {
 		console.error("图片上传失败:", error);
-		showMessage("图片上传失败，请重试","error");
+		ElMessage.error("图片上传失败，请重试");
 	} finally {
 		isUploading.value = false;
 		uploadProgress.value.clear();
@@ -473,8 +605,13 @@ const calculateEditorHeight = () => {
 };
 
 // 组件挂载时初始化
-onMounted(() => {
-	loadCategories();
+onMounted(async () => {
+	// 并行加载数据
+	await Promise.all([
+		loadCategories(),
+		loadPopularTags(),
+	]);
+	
 	calculateEditorHeight();
 
 	// 监听窗口大小变化
@@ -623,9 +760,34 @@ onMounted(() => {
 					<div class="form-group">
 						<label class="form-label">文章标签</label>
 						<div class="tag-input-container">
-							<input v-model="newTag" type="text" class="tag-input" placeholder="输入标签后按回车添加" @keyup.enter="addTag" @keyup.esc="newTag = ''" />
-							<button class="add-tag-btn" @click="addTag" :disabled="!newTag.trim()">添加</button>
+							<input 
+								v-model="newTag" 
+								type="text" 
+								class="tag-input" 
+								placeholder="输入标签名称搜索或创建新标签" 
+								@keyup.enter="addTag" 
+								@keyup.esc="newTag = ''; tagSearchResults = []"
+								@input="searchTags(newTag)"
+							/>
+							<button class="add-tag-btn" @click="addTag" :disabled="!newTag.trim()">
+								{{ isSearchingTags ? '搜索中...' : '添加' }}
+							</button>
 						</div>
+						
+						<!-- 搜索结果下拉列表 -->
+						<div v-if="tagSearchResults.length > 0" class="tag-search-results">
+							<div class="search-results-header">搜索结果：</div>
+							<button 
+								v-for="tag in tagSearchResults.slice(0, 8)" 
+								:key="tag" 
+								class="search-result-item"
+								:disabled="articleForm.tags.includes(tag)"
+								@click="selectSearchedTag(tag)"
+							>
+								{{ tag }}
+							</button>
+						</div>
+						
 						<div class="selected-tags">
 							<span v-for="tag in articleForm.tags" :key="tag" class="tag-item">
 								{{ tag }}
@@ -634,7 +796,7 @@ onMounted(() => {
 						</div>
 						<div v-if="formErrors.tags" class="error-message">{{ formErrors.tags }}</div>
 						<div class="tag-suggestions">
-							<span class="suggestions-label">推荐：</span>
+							<span class="suggestions-label">热门推荐：</span>
 							<button v-for="tag in suggestedTags.slice(0, 6)" :key="tag" class="suggestion-tag" @click="addSuggestedTag(tag)" :disabled="articleForm.tags.includes(tag)">
 								{{ tag }}
 							</button>
@@ -652,7 +814,7 @@ onMounted(() => {
 								<img :src="articleForm.coverImage" alt="封面预览" />
 								<button class="remove-cover" @click="removeCover">删除</button>
 							</div>
-							<button v-else class="upload-cover-btn" @click="$refs.coverInput.click()">
+							<button v-else class="upload-cover-btn" @click="coverInput?.click()">
 								<span class="btn-icon">📷</span>
 								上传封面
 							</button>
@@ -1119,6 +1281,48 @@ onMounted(() => {
 	cursor: not-allowed;
 }
 
+/* 标签搜索结果 */
+.tag-search-results {
+	background: var(--bg-tertiary);
+	border: 1px solid rgba(100, 255, 218, 0.1);
+	border-radius: 6px;
+	margin-bottom: 8px;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.search-results-header {
+	padding: 8px 12px;
+	color: var(--text-secondary);
+	font-size: 11px;
+	border-bottom: 1px solid rgba(100, 255, 218, 0.1);
+	background: var(--bg-secondary);
+}
+
+.search-result-item {
+	display: block;
+	width: 100%;
+	padding: 8px 12px;
+	background: none;
+	border: none;
+	color: var(--text-primary);
+	text-align: left;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	font-size: 12px;
+}
+
+.search-result-item:hover:not(:disabled) {
+	background: rgba(100, 255, 218, 0.1);
+	color: var(--accent);
+}
+
+.search-result-item:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	color: var(--text-secondary);
+}
+
 /* 封面上传 */
 .cover-upload {
 	border: 2px dashed rgba(100, 255, 218, 0.3);
@@ -1425,5 +1629,40 @@ onMounted(() => {
 	justify-content: space-between;
 	align-items: center;
 	margin-top: 4px;
+}
+
+/* Element Plus 确认对话框自定义样式 */
+:deep(.create-tag-dialog) {
+	background: var(--bg-secondary) !important;
+	border: 1px solid rgba(100, 255, 218, 0.2) !important;
+}
+
+:deep(.create-tag-dialog .el-message-box__header) {
+	background: var(--bg-tertiary) !important;
+	border-bottom: 1px solid rgba(100, 255, 218, 0.1) !important;
+}
+
+:deep(.create-tag-dialog .el-message-box__title) {
+	color: var(--text-primary) !important;
+}
+
+:deep(.create-tag-dialog .el-message-box__content) {
+	background: var(--bg-secondary) !important;
+	color: var(--text-primary) !important;
+}
+
+:deep(.create-tag-dialog .el-message-box__message) {
+	color: var(--text-primary) !important;
+}
+
+:deep(.create-tag-dialog .el-button--primary) {
+	background: var(--accent) !important;
+	border-color: var(--accent) !important;
+	color: var(--bg-primary) !important;
+}
+
+:deep(.create-tag-dialog .el-button--primary:hover) {
+	background: var(--accent-hover) !important;
+	border-color: var(--accent-hover) !important;
 }
 </style>
