@@ -24,8 +24,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 
 interface Article {
+	id?: number;
 	date: string;
 	category: string;
 	title: string;
@@ -36,13 +38,21 @@ interface Props {
 	article: Article;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const cardRef = ref<HTMLElement>();
 const isVisible = ref(false);
 
+const router = useRouter();
+
 const readMore = () => {
-	console.log("阅读更多");
+	// 后续可以实现跳转到文章详情页
+	if (props.article.id) {
+		console.log("跳转到文章详情页:", props.article.id);
+		router.push(`/articles/${props.article.id}`);
+	} else {
+		console.log("阅读更多");
+	}
 };
 
 onMounted(() => {
