@@ -1,146 +1,8 @@
-<template>
-	<div class="article-list-page">
-		<!-- 导航栏 -->
-		<NavBar />
-		
-		<!-- 页面头部 -->
-		<!-- <div class="page-header">
-			<div class="header-content">
-				<h1 class="page-title">文章列表</h1>
-				<p class="page-description">探索技术世界，分享知识见解</p>
-			</div>
-		</div> -->
-
-		<!-- 搜索和筛选区域 -->
-		<div class="filter-section">
-			<div class="filter-container">
-				<div class="search-box">
-					<input 
-						v-model="searchKeyword" 
-						type="text" 
-						placeholder="搜索文章标题..." 
-						class="search-input"
-						@keyup.enter="searchArticles"
-					/>
-					<button class="search-btn" @click="searchArticles">🔍</button>
-				</div>
-
-				<div class="filter-group">
-					<select v-model="selectedCategory" class="filter-select" @change="searchArticles">
-						<option value="">全部分类</option>
-						<option v-for="category in categories" :key="category.id" :value="category.id">
-							{{ category.name }}
-						</option>
-					</select>
-					<button class="reset-btn" @click="resetFilters">重置</button>
-				</div>
-			</div>
-		</div>
-
-		<!-- 文章列表区域 -->
-		<div class="articles-section">
-			<!-- 加载状态 -->
-			<div v-if="loading" class="loading-state">
-				<div class="loading-spinner">⏳</div>
-				<div class="loading-text">正在加载文章...</div>
-			</div>
-
-			<!-- 空状态 -->
-			<div v-else-if="articles.length === 0" class="empty-state">
-				<div class="empty-icon">📝</div>
-				<div class="empty-title">
-					{{ searchKeyword || selectedCategory ? '没有找到匹配的文章' : '暂无文章' }}
-				</div>
-				<div class="empty-description">
-					{{ searchKeyword || selectedCategory ? '尝试调整搜索条件或筛选器' : '还没有发布任何文章，敬请期待！' }}
-				</div>
-			</div>
-
-			<!-- 文章列表 -->
-			<div v-else>
-				<div class="articles-list">
-					<article 
-						v-for="article in articles" 
-						:key="article.id" 
-						class="article-item"
-						@click="readArticle(article.id)"
-					>
-						<!-- 封面图片 -->
-						<div v-if="article.coverImage" class="article-cover">
-							<img :src="article.coverImage" :alt="article.title" />
-						</div>
-						
-						<!-- 文章内容 -->
-						<div class="article-content">
-							<div class="article-meta">
-								<span class="article-date">📅 {{ formatDate(article.date) }}</span>
-								<span class="article-category">{{ article.category }}</span>
-								<span v-if="article.isPinned" class="pin-badge">📌 置顶</span>
-								<span v-if="article.isOriginal" class="original-badge">原创</span>
-							</div>
-							
-							<h2 class="article-title">{{ article.title }}</h2>
-							
-							<p class="article-excerpt">{{ article.excerpt }}</p>
-							
-							<div class="article-stats">
-								<span class="stat-item">👁️ {{ article.viewCount }}</span>
-								<span class="stat-item">❤️ {{ article.likeCount }}</span>
-								<span class="stat-item">💬 {{ article.commentCount }}</span>
-								<span class="stat-item">⏱️ {{ article.readingTime }}分钟</span>
-							</div>
-							
-							<div class="article-tags" v-if="article.tags && article.tags.length > 0">
-								<span v-for="tag in article.tags" :key="tag" class="tag">{{ tag }}</span>
-							</div>
-						</div>
-					</article>
-				</div>
-
-				<!-- 分页组件 -->
-				<div v-if="totalPages > 1" class="pagination">
-					<div class="pagination-info">
-						共 {{ totalElements }} 篇文章，第 {{ currentPage + 1 }} / {{ totalPages }} 页
-					</div>
-					<div class="pagination-controls">
-						<button 
-							class="page-btn" 
-							:disabled="currentPage === 0" 
-							@click="changePage(currentPage - 1)"
-						>
-							上一页
-						</button>
-						
-						<div class="page-numbers">
-							<button 
-								v-for="page in visiblePages" 
-								:key="page" 
-								class="page-number" 
-								:class="{ active: page - 1 === currentPage }" 
-								@click="changePage(page - 1)"
-							>
-								{{ page }}
-							</button>
-						</div>
-						
-						<button 
-							class="page-btn" 
-							:disabled="currentPage === totalPages - 1" 
-							@click="changePage(currentPage + 1)"
-						>
-							下一页
-						</button>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import NavBar from "@/components/NavBar.vue";
+
 import { articleAPI } from "@/api/article.ts";
 import { categoryAPI } from "@/api/category.ts";
 import { ElMessage } from "element-plus";
@@ -194,6 +56,10 @@ const loading = ref(false);
 // 搜索和筛选
 const searchKeyword = ref("");
 const selectedCategory = ref("");
+
+// 图片预览
+const showImagePreview = ref(false);
+const previewImageUrl = ref("");
 
 // 分页数据
 const currentPage = ref(0);
@@ -302,14 +168,27 @@ const formatDate = (dateString: string) => {
 	const date = new Date(dateString);
 	return date.toLocaleDateString('zh-CN', {
 		year: 'numeric',
-		month: 'long',
-		day: 'numeric'
-	});
+		month: '2-digit',
+		day: '2-digit'
+	}).replace(/\//g, '-');
 };
 
 // 阅读文章 - 跳转到文章详情页
 const readArticle = (articleId: number) => {
 	router.push(`/articles/${articleId}`);
+};
+
+// 预览图片
+const previewImage = (imageUrl: string, event: Event) => {
+	event.stopPropagation(); // 阻止事件冒泡，避免触发文章跳转
+	previewImageUrl.value = imageUrl;
+	showImagePreview.value = true;
+};
+
+// 关闭图片预览
+const closeImagePreview = () => {
+	showImagePreview.value = false;
+	previewImageUrl.value = "";
 };
 
 // 监听搜索关键字变化
@@ -322,6 +201,7 @@ watch(searchKeyword, (newValue, oldValue) => {
 
 // 组件挂载时初始化
 onMounted(async () => {
+	console.log("ArticleListView mounted, DynamicBackground should be visible");
 	await Promise.all([
 		loadCategories(),
 		loadArticles()
@@ -329,10 +209,161 @@ onMounted(async () => {
 });
 </script>
 
+<template>
+	<div class="article-list-page">
+		<!-- 导航栏 -->
+		<NavBar />
+		
+		<!-- 页面头部 -->
+		<!-- <div class="page-header">
+			<div class="header-content">
+				<h1 class="page-title">文章列表</h1>
+				<p class="page-description">探索技术世界，分享知识见解</p>
+			</div>
+		</div> -->
+
+		<!-- 搜索和筛选区域 -->
+		<div class="filter-section">
+			<div class="filter-container">
+				<div class="search-box">
+					<input 
+						v-model="searchKeyword" 
+						type="text" 
+						placeholder="搜索文章标题..." 
+						class="search-input"
+						@keyup.enter="searchArticles"
+					/>
+					<button class="search-btn" @click="searchArticles">🔍</button>
+				</div>
+
+				<div class="filter-group">
+					<select v-model="selectedCategory" class="filter-select" @change="searchArticles">
+						<option value="">全部分类</option>
+						<option v-for="category in categories" :key="category.id" :value="category.id">
+							{{ category.name }}
+						</option>
+					</select>
+					<button class="reset-btn" @click="resetFilters">重置</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- 文章列表区域 -->
+		<div class="articles-section">
+			<!-- 加载状态 -->
+			<div v-if="loading" class="loading-state">
+				<div class="loading-spinner">⏳</div>
+				<div class="loading-text">正在加载文章...</div>
+			</div>
+
+			<!-- 空状态 -->
+			<div v-else-if="articles.length === 0" class="empty-state">
+				<div class="empty-icon">📝</div>
+				<div class="empty-title">
+					{{ searchKeyword || selectedCategory ? '没有找到匹配的文章' : '暂无文章' }}
+				</div>
+				<div class="empty-description">
+					{{ searchKeyword || selectedCategory ? '尝试调整搜索条件或筛选器' : '还没有发布任何文章，敬请期待！' }}
+				</div>
+			</div>
+
+			<!-- 文章列表 -->
+			<div v-else>
+				<div class="articles-list">
+					<article 
+						v-for="article in articles" 
+						:key="article.id" 
+						class="article-item"
+						@click="readArticle(article.id)"
+					>
+						<!-- 封面图片 -->
+						<div v-if="article.coverImage" class="article-cover" @click="previewImage(article.coverImage, $event)">
+							<img :src="article.coverImage" :alt="article.title" />
+							<div class="cover-overlay">
+								<span class="preview-icon">🔍</span>
+							</div>
+						</div>
+						
+						<!-- 文章内容 -->
+						<div class="article-content">
+							<div class="article-meta">
+								<span class="article-date">📅 {{ formatDate(article.date) }}</span>
+								<span class="article-category">{{ article.category }}</span>
+								<div class="article-tags" v-if="article.tags && article.tags.length > 0">
+									<span v-for="tag in article.tags" :key="tag" class="tag">{{ tag }}</span>
+								</div>
+								<span v-if="article.isPinned" class="pin-badge">📌 置顶</span>
+								<span v-if="article.isOriginal" class="original-badge">原创</span>
+							</div>
+							
+							<h2 class="article-title">{{ article.title }}</h2>
+							
+							<p class="article-excerpt">{{ article.excerpt }}</p>
+							
+							<div class="article-stats">
+								<span class="stat-item">👁️ {{ article.viewCount }}</span>
+								<!-- <span class="stat-item">❤️ {{ article.likeCount }}</span>
+								<span class="stat-item">💬 {{ article.commentCount }}</span> -->
+								<span class="stat-item">🔤 {{ article.wordCount }}字</span>
+								<span class="stat-item">⏱️ {{ article.readingTime }}分钟</span>
+							</div>
+						</div>
+					</article>
+				</div>
+
+				<!-- 分页组件 -->
+				<div v-if="totalPages > 1" class="pagination">
+					<div class="pagination-info">
+						共 {{ totalElements }} 篇文章，第 {{ currentPage + 1 }} / {{ totalPages }} 页
+					</div>
+					<div class="pagination-controls">
+						<button 
+							class="page-btn" 
+							:disabled="currentPage === 0" 
+							@click="changePage(currentPage - 1)"
+						>
+							上一页
+						</button>
+						
+						<div class="page-numbers">
+							<button 
+								v-for="page in visiblePages" 
+								:key="page" 
+								class="page-number" 
+								:class="{ active: page - 1 === currentPage }" 
+								@click="changePage(page - 1)"
+							>
+								{{ page }}
+							</button>
+						</div>
+						
+						<button 
+							class="page-btn" 
+							:disabled="currentPage === totalPages - 1" 
+							@click="changePage(currentPage + 1)"
+						>
+							下一页
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- 图片预览弹窗 -->
+		<div v-if="showImagePreview" class="image-preview-modal" @click="closeImagePreview">
+			<div class="preview-container">
+				<img :src="previewImageUrl" alt="预览图片" class="preview-image" @click.stop />
+				<button class="close-btn" @click="closeImagePreview">✕</button>
+			</div>
+		</div>
+	</div>
+</template>
+
 <style scoped>
 .article-list-page {
 	min-height: 100vh;
 	padding-top: 80px; /* 为固定导航栏留出空间 */
+	background: var(--bg-primary);
 }
 
 /* 页面头部 */
@@ -374,7 +405,7 @@ onMounted(async () => {
 	max-width: 1400px;
 	margin: 0 auto;
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-start;
 	align-items: center;
 	gap: 2rem;
 	background: rgba(26, 35, 50, 0.8);
@@ -477,7 +508,8 @@ onMounted(async () => {
 
 .article-item {
 	display: flex;
-	background: var(--bg-secondary);
+	background: rgba(26, 35, 50, 0.8);
+	backdrop-filter: blur(10px);
 	border-radius: 16px;
 	padding: 1.5rem;
 	border: 1px solid rgba(100, 255, 218, 0.1);
@@ -499,6 +531,8 @@ onMounted(async () => {
 	margin-right: 1.5rem;
 	border-radius: 12px;
 	overflow: hidden;
+	position: relative;
+	cursor: pointer;
 }
 
 .article-cover img {
@@ -510,6 +544,30 @@ onMounted(async () => {
 
 .article-item:hover .article-cover img {
 	transform: scale(1.05);
+}
+
+.cover-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	transition: opacity 0.3s ease;
+}
+
+.article-cover:hover .cover-overlay {
+	opacity: 1;
+}
+
+.preview-icon {
+	color: white;
+	font-size: 1.5rem;
+	pointer-events: none;
 }
 
 .article-content {
@@ -602,7 +660,7 @@ onMounted(async () => {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.5rem;
-	margin-top: 0.5rem;
+	align-items: center;
 }
 
 .tag {
@@ -744,6 +802,85 @@ onMounted(async () => {
 	border-color: var(--accent);
 }
 
+/* 图片预览弹窗 */
+.image-preview-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.9);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 9999;
+	backdrop-filter: blur(10px);
+	animation: fadeIn 0.3s ease;
+}
+
+.preview-container {
+	position: relative;
+	max-width: 95vw;
+	max-height: 95vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.preview-image {
+	max-width: 150%;
+	max-height: 150%;
+	object-fit: contain;
+	border-radius: 8px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+	animation: zoomIn 0.3s ease;
+}
+
+.close-btn {
+	position: absolute;
+	top: -50px;
+	right: -50px;
+	width: 40px;
+	height: 40px;
+	background: rgba(255, 255, 255, 0.1);
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	border-radius: 50%;
+	color: white;
+	font-size: 18px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.3s ease;
+	backdrop-filter: blur(10px);
+}
+
+.close-btn:hover {
+	background: rgba(255, 255, 255, 0.2);
+	border-color: rgba(255, 255, 255, 0.5);
+	transform: scale(1.1);
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes zoomIn {
+	from {
+		transform: scale(0.8);
+		opacity: 0;
+	}
+	to {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
 	.page-title {
@@ -786,6 +923,24 @@ onMounted(async () => {
 	.pagination-controls {
 		flex-wrap: wrap;
 		justify-content: center;
+	}
+
+	.close-btn {
+		top: -40px;
+		right: -40px;
+		width: 35px;
+		height: 35px;
+		font-size: 16px;
+	}
+
+	.preview-container {
+		max-width: 95vw;
+		max-height: 95vh;
+	}
+
+	.preview-image {
+		max-width: 100%;
+		max-height: 100%;
 	}
 }
 </style> 
