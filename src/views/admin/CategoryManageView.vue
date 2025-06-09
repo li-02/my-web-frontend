@@ -1,42 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
+import type { Category, CategoryFormData, CategoryQueryParams } from "@/type/category";
+import { categoryAPI } from "@/api/category";
+import { ElMessage } from "element-plus";
+import { formatDateTime } from "@/utils/dateFormat";
 
 // 分类列表数据
-const categories = ref([
-	{
-		id: 1,
-		name: "技术分享",
-		description: "分享各种技术心得和经验",
-		articleCount: 12,
-		createTime: "2024-01-15",
-	},
-	{
-		id: 2,
-		name: "前端开发",
-		description: "前端技术相关的文章和教程",
-		articleCount: 8,
-		createTime: "2024-01-20",
-	},
-	{
-		id: 3,
-		name: "数据库",
-		description: "数据库设计、优化和管理相关内容",
-		articleCount: 5,
-		createTime: "2024-02-01",
-	},
-	{
-		id: 4,
-		name: "架构设计",
-		description: "系统架构设计模式和最佳实践",
-		articleCount: 3,
-		createTime: "2024-02-10",
-	},
-]);
+const categories = ref<Category[]>([]);
 
 // 表单相关
 const showModal = ref(false);
-const editingCategory = ref<any>(null);
-const formData = ref({
+const editingCategory = ref<Category | null>(null);
+const formData = ref<CategoryFormData>({
 	name: "",
 	description: "",
 });
@@ -47,30 +22,64 @@ const searchKeyword = ref("");
 // 分页数据
 const currentPage = ref(1);
 const pageSize = ref(10);
-const total = ref(4);
+const total = ref(0);
+const totalPages = ref(0);
+
+// 加载状态
+const loading = ref(false);
 
 // 表单验证错误
 const formErrors = ref<Record<string, string>>({});
 
-// 过滤后的分类列表
-const filteredCategories = ref(categories.value);
+// 过滤后的分类列表（实际显示的列表）
+const filteredCategories = ref<Category[]>([]);
+
+// 获取查询参数
+const getQueryParams = (): CategoryQueryParams => ({
+	page: currentPage.value - 1, // 后端API的page从0开始，前端从1开始显示
+	pageSize: pageSize.value,
+	keyword: searchKeyword.value.trim() || undefined,
+});
+
+// 加载分类列表
+const loadCategories = async () => {
+	try {
+		loading.value = true;
+		const params = getQueryParams();
+		const response = await categoryAPI.getCategoriesList(params);
+		
+		if (response.code === 200) {
+			categories.value = response.data.data;
+			filteredCategories.value = response.data.data;
+			total.value = response.data.total;
+			totalPages.value = response.data.totalPages;
+			// 后端返回的page是从0开始的，转换为前端的页码（从1开始）
+			currentPage.value = response.data.page + 1;
+			
+			console.log('分类列表加载成功:', response.data);
+			console.log('前端页码:', currentPage.value, '后端页码:', response.data.page);
+		} else {
+			ElMessage.error(response.message || '获取分类列表失败');
+		}
+	} catch (error: any) {
+		console.error('获取分类列表失败:', error);
+		ElMessage.error(error.response?.data?.message || '获取分类列表失败，请重试');
+	} finally {
+		loading.value = false;
+	}
+};
 
 // 搜索分类
 const searchCategories = () => {
-	if (!searchKeyword.value.trim()) {
-		filteredCategories.value = categories.value;
-		return;
-	}
-
-	filteredCategories.value = categories.value.filter(
-		(category) => category.name.toLowerCase().includes(searchKeyword.value.toLowerCase()) || category.description.toLowerCase().includes(searchKeyword.value.toLowerCase())
-	);
+	currentPage.value = 1; // 搜索时重置到第一页
+	loadCategories();
 };
 
 // 重置搜索
 const resetSearch = () => {
 	searchKeyword.value = "";
-	filteredCategories.value = categories.value;
+	currentPage.value = 1;
+	loadCategories();
 };
 
 // 打开新增分类模态框
@@ -85,7 +94,7 @@ const openCreateModal = () => {
 };
 
 // 打开编辑分类模态框
-const openEditModal = (category: any) => {
+const openEditModal = (category: Category) => {
 	editingCategory.value = category;
 	formData.value = {
 		name: category.name,
@@ -123,7 +132,7 @@ const validateForm = () => {
 	}
 
 	// 检查名称是否重复
-	const existingCategory = categories.value.find((cat) => cat.name === formData.value.name.trim() && (!editingCategory.value || cat.id !== editingCategory.value.id));
+	const existingCategory = categories.value.find((cat) => cat.name === formData.value.name.trim() && (!editingCategory.value || cat.id !== editingCategory.value?.id));
 
 	if (existingCategory) {
 		formErrors.value.name = "分类名称已存在";
@@ -133,14 +142,14 @@ const validateForm = () => {
 };
 
 // 保存分类
-const saveCategory = () => {
+const saveCategory = async () => {
 	if (!validateForm()) {
 		return;
 	}
 
 	if (editingCategory.value) {
 		// 编辑分类
-		const index = categories.value.findIndex((cat) => cat.id === editingCategory.value.id);
+		const index = categories.value.findIndex((cat) => cat.id === editingCategory.value!.id);
 		if (index > -1) {
 			categories.value[index] = {
 				...categories.value[index],
@@ -148,30 +157,34 @@ const saveCategory = () => {
 				description: formData.value.description.trim(),
 			};
 		}
-		console.log("更新分类:", editingCategory.value.id, formData.value);
+		console.log("更新分类:", editingCategory.value!.id, formData.value);
 	} else {
 		// 新增分类
-		const newCategory = {
+		const newCategory: Category = {
 			id: Date.now(), // 简单的ID生成
 			name: formData.value.name.trim(),
 			description: formData.value.description.trim(),
+			createTime: new Date().toISOString(),
+			updateTime: new Date().toISOString(),
+			deleteTime: null,
+			deleted: false,
 			articleCount: 0,
-			createTime: new Date().toISOString().split("T")[0],
 		};
 		categories.value.unshift(newCategory);
 		total.value++;
 		console.log("新增分类:", newCategory);
 	}
 
-	// 更新过滤后的列表
-	searchCategories();
+	// 重新加载分类列表
+	await loadCategories();
 	closeModal();
 };
 
 // 删除分类
-const deleteCategory = (category: any) => {
-	if (category.articleCount > 0) {
-		alert(`该分类下还有 ${category.articleCount} 篇文章，无法删除`);
+const deleteCategory = async (category: Category) => {
+	const articleCount = category.articleCount || 0;
+	if (articleCount > 0) {
+		alert(`该分类下还有 ${articleCount} 篇文章，无法删除`);
 		return;
 	}
 
@@ -182,8 +195,8 @@ const deleteCategory = (category: any) => {
 			total.value--;
 		}
 
-		// 更新过滤后的列表
-		searchCategories();
+		// 重新加载分类列表
+		await loadCategories();
 		console.log("删除分类:", category.id);
 	}
 };
@@ -191,14 +204,12 @@ const deleteCategory = (category: any) => {
 // 分页改变
 const handlePageChange = (page: number) => {
 	currentPage.value = page;
-	console.log("切换到第", page, "页");
+	loadCategories();
 };
 
 // 组件挂载时获取数据
 onMounted(() => {
-	// TODO: 调用API获取分类列表
-	// loadCategories()
-	filteredCategories.value = categories.value;
+	loadCategories();
 });
 </script>
 
@@ -226,14 +237,14 @@ onMounted(() => {
 			<div class="stat-card">
 				<div class="stat-icon">📁</div>
 				<div class="stat-info">
-					<div class="stat-value">{{ categories.length }}</div>
+					<div class="stat-value">{{ total }}</div>
 					<div class="stat-label">总分类数</div>
 				</div>
 			</div>
 			<div class="stat-card">
 				<div class="stat-icon">📝</div>
 				<div class="stat-info">
-					<div class="stat-value">{{ categories.reduce((sum, cat) => sum + cat.articleCount, 0) }}</div>
+					<div class="stat-value">{{ categories.reduce((sum, cat) => sum + (cat.articleCount || 0), 0) }}</div>
 					<div class="stat-label">总文章数</div>
 				</div>
 			</div>
@@ -249,7 +260,13 @@ onMounted(() => {
 				<div class="header-item actions">操作</div>
 			</div>
 
-			<div v-if="filteredCategories.length === 0" class="empty-state">
+			<!-- 加载状态 -->
+			<div v-if="loading" class="loading-state">
+				<div class="loading-icon">⏳</div>
+				<div class="loading-text">正在加载分类列表...</div>
+			</div>
+
+			<div v-else-if="filteredCategories.length === 0" class="empty-state">
 				<div class="empty-icon">📂</div>
 				<div class="empty-text">
 					{{ searchKeyword ? "没有找到匹配的分类" : "暂无分类数据" }}
@@ -257,7 +274,7 @@ onMounted(() => {
 				<button v-if="!searchKeyword" class="empty-btn" @click="openCreateModal">创建第一个分类</button>
 			</div>
 
-			<div v-for="category in filteredCategories" :key="category.id" class="category-item">
+			<div v-else v-for="category in filteredCategories" :key="category.id" class="category-item">
 				<div class="category-name">
 					<div class="name-text">{{ category.name }}</div>
 				</div>
@@ -269,31 +286,31 @@ onMounted(() => {
 				</div>
 
 				<div class="category-count">
-					<span class="count-badge" :class="{ 'has-articles': category.articleCount > 0 }">
-						{{ category.articleCount }}
+					<span class="count-badge" :class="{ 'has-articles': (category.articleCount || 0) > 0 }">
+						{{ category.articleCount || 0 }}
 					</span>
 				</div>
 
-				<div class="category-date">{{ category.createTime }}</div>
+				<div class="category-date">{{ formatDateTime(category.createTime) }}</div>
 
 				<div class="category-actions">
 					<button class="action-btn edit" @click="openEditModal(category)" title="编辑">✏️</button>
-					<button class="action-btn delete" @click="deleteCategory(category)" :disabled="category.articleCount > 0" :title="category.articleCount > 0 ? '该分类下有文章，无法删除' : '删除'">🗑️</button>
+					<button class="action-btn delete" @click="deleteCategory(category)" :disabled="(category.articleCount || 0) > 0" :title="(category.articleCount || 0) > 0 ? '该分类下有文章，无法删除' : '删除'">🗑️</button>
 				</div>
 			</div>
 		</div>
 
 		<!-- 分页组件 -->
 		<div v-if="filteredCategories.length > 0" class="pagination">
-			<div class="pagination-info">共 {{ total }} 个分类，第 {{ currentPage }} / {{ Math.ceil(total / pageSize) }} 页</div>
+			<div class="pagination-info">共 {{ total }} 个分类，第 {{ currentPage }} / {{ totalPages }} 页</div>
 			<div class="pagination-controls">
 				<button class="page-btn" :disabled="currentPage === 1" @click="handlePageChange(currentPage - 1)">上一页</button>
 				<span class="page-numbers">
-					<button v-for="page in Math.ceil(total / pageSize)" :key="page" class="page-number" :class="{ active: page === currentPage }" @click="handlePageChange(page)">
+					<button v-for="page in totalPages" :key="page" class="page-number" :class="{ active: page === currentPage }" @click="handlePageChange(page)">
 						{{ page }}
 					</button>
 				</span>
-				<button class="page-btn" :disabled="currentPage === Math.ceil(total / pageSize)" @click="handlePageChange(currentPage + 1)">下一页</button>
+				<button class="page-btn" :disabled="currentPage === totalPages" @click="handlePageChange(currentPage + 1)">下一页</button>
 			</div>
 		</div>
 
@@ -525,6 +542,24 @@ onMounted(() => {
 .header-item {
 	display: flex;
 	align-items: center;
+}
+
+.loading-state {
+	padding: 60px 20px;
+	text-align: center;
+	color: var(--text-secondary);
+}
+
+.loading-icon {
+	font-size: 48px;
+	margin-bottom: 16px;
+	opacity: 0.7;
+	animation: pulse 1.5s ease-in-out infinite;
+}
+
+.loading-text {
+	font-size: 16px;
+	color: var(--text-secondary);
 }
 
 .empty-state {
@@ -956,6 +991,15 @@ onMounted(() => {
 	to {
 		opacity: 1;
 		transform: translateY(0);
+	}
+}
+
+@keyframes pulse {
+	0%, 100% {
+		opacity: 0.7;
+	}
+	50% {
+		opacity: 1;
 	}
 }
 </style>
