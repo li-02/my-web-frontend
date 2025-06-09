@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import NavBar from "@/components/NavBar.vue";
+
 import { articleAPI } from "@/api/article.ts";
 import { ElMessage } from "element-plus";
 import { MdPreview } from 'md-editor-v3';
@@ -36,6 +37,13 @@ interface Article {
 	tags?: string[];
 }
 
+// 大纲项接口定义
+interface OutlineItem {
+	id: string;
+	title: string;
+	level: number;
+}
+
 const route = useRoute();
 const router = useRouter();
 
@@ -44,6 +52,10 @@ const article = ref<Article | null>(null);
 const relatedArticles = ref<Article[]>([]);
 const loading = ref(false);
 const isLiked = ref(false);
+const outline = ref<OutlineItem[]>([]);
+const activeOutlineId = ref<string>('');
+const showOutline = ref(false);
+const isOutlineCollapsed = ref(false);
 
 // 增加文章浏览次数
 const incrementViewCount = async (articleId: string) => {
@@ -79,12 +91,112 @@ const incrementViewCount = async (articleId: string) => {
 	}
 };
 
+// 解析文章大纲
+const parseOutline = (content: string) => {
+	const lines = content.split('\n');
+	const outlineItems: OutlineItem[] = [];
+	let headingCounter = 0;
+	
+	lines.forEach((line) => {
+		const match = line.match(/^(#{1,6})\s+(.+)/);
+		if (match) {
+			headingCounter++;
+			const level = match[1].length;
+			const title = match[2].trim();
+			const id = `heading-${headingCounter}`;
+			
+			outlineItems.push({
+				id,
+				title,
+				level
+			});
+		}
+	});
+	
+	return outlineItems;
+};
+
+// 给标题添加ID
+const addHeadingIds = async () => {
+	await nextTick();
+	// 多次尝试获取预览元素，等待Markdown完全渲染
+	let attempts = 0;
+	const maxAttempts = 10;
+	
+	const tryAddIds = () => {
+		const previewElement = document.querySelector('.markdown-content .md-editor-preview');
+		if (!previewElement) {
+			attempts++;
+			if (attempts < maxAttempts) {
+				setTimeout(tryAddIds, 100);
+			}
+			return;
+		}
+		
+		const headings = previewElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
+		if (headings.length === 0) {
+			attempts++;
+			if (attempts < maxAttempts) {
+				setTimeout(tryAddIds, 100);
+			}
+			return;
+		}
+		
+		let headingCounter = 0;
+		headings.forEach((heading) => {
+			headingCounter++;
+			const id = `heading-${headingCounter}`;
+			heading.id = id;
+		});
+		
+		console.log(`成功为 ${headings.length} 个标题添加了ID`);
+	};
+	
+	tryAddIds();
+};
+
+// 滚动到指定标题
+const scrollToHeading = (id: string) => {
+	const element = document.getElementById(id);
+	if (element) {
+		const offsetTop = element.offsetTop - 100; // 减去导航栏高度
+		window.scrollTo({
+			top: offsetTop,
+			behavior: 'smooth'
+		});
+		activeOutlineId.value = id;
+	}
+};
+
+// 监听滚动，更新当前激活的大纲项
+const handleScroll = () => {
+	const headings = document.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
+	let currentId = '';
+	
+	headings.forEach((heading) => {
+		const rect = heading.getBoundingClientRect();
+		if (rect.top <= 150) { // 考虑导航栏高度
+			currentId = heading.id;
+		}
+	});
+	
+	if (currentId) {
+		activeOutlineId.value = currentId;
+	}
+};
+
 // 加载文章详情
 const loadArticle = async (articleId: string) => {
 	try {
 		loading.value = true;
 		const response = await articleAPI.getArticle(articleId);
 		article.value = response.data;
+		
+		// 解析文章大纲
+		if (article.value?.content) {
+			outline.value = parseOutline(article.value.content);
+			showOutline.value = outline.value.length > 0;
+		}
 		
 		// 调试：打印文章内容，检查代码块格式
 		console.log("文章内容:", article.value?.content);
@@ -95,7 +207,11 @@ const loadArticle = async (articleId: string) => {
 		// 加载相关文章
 		await loadRelatedArticles();
 		
+		// 给标题添加ID
+		await addHeadingIds();
+		
 		console.log("文章详情加载成功:", article.value);
+		console.log("文章大纲:", outline.value);
 	} catch (error: any) {
 		console.error("获取文章详情失败:", error);
 		ElMessage.error("获取文章详情失败");
@@ -175,6 +291,11 @@ const shareArticle = async () => {
 	}
 };
 
+// 切换大纲折叠状态
+const toggleOutline = () => {
+	isOutlineCollapsed.value = !isOutlineCollapsed.value;
+};
+
 // 组件挂载时加载文章
 onMounted(() => {
 	const articleId = route.params.id as string;
@@ -183,6 +304,14 @@ onMounted(() => {
 	} else {
 		router.push("/articles");
 	}
+	
+	// 添加滚动监听
+	window.addEventListener('scroll', handleScroll);
+});
+
+// 组件卸载时移除监听
+onUnmounted(() => {
+	window.removeEventListener('scroll', handleScroll);
 });
 </script>
 
@@ -222,9 +351,16 @@ onMounted(() => {
 					<!-- 文章元信息 -->
 					<div class="article-meta">
 						<span class="article-date">📅 {{ formatDate(article.publishTime || article.createTime) }}</span>
-						<span class="article-category">{{ article.categoryName || '未分类' }}</span>
-						<span v-if="article.isPinned" class="pin-badge">📌 置顶</span>
 						<span v-if="article.isOriginal" class="original-badge">原创</span>
+						<div class="category-tags-group">
+							<span class="article-category">{{ article.categoryName || '未分类' }}</span>
+							<!-- 文章标签 -->
+							<div v-if="article.tags && article.tags.length > 0" class="article-tags-inline">
+								<span v-for="tag in article.tags" :key="tag" class="tag-inline">{{ tag }}</span>
+							</div>
+						</div>
+						<span v-if="article.isPinned" class="pin-badge">📌 置顶</span>
+
 					</div>
 					
 					<!-- 文章标题 -->
@@ -241,11 +377,6 @@ onMounted(() => {
 						<span class="stat-item">⏱️ {{ article.readingTime }} 分钟阅读</span>
 						<span class="stat-item">📝 {{ article.wordCount || 0 }} 字</span>
 					</div>
-					
-					<!-- 文章标签 -->
-					<div v-if="article.tags && article.tags.length > 0" class="article-tags">
-						<span v-for="tag in article.tags" :key="tag" class="tag">{{ tag }}</span>
-					</div>
 				</div>
 			</header>
 			
@@ -256,17 +387,55 @@ onMounted(() => {
 			
 			<!-- 文章正文 -->
 			<main class="article-content">
-				<div class="content-wrapper">
-					<!-- Markdown 内容渲染 -->
-					<MdPreview 
-						:modelValue="article.content" 
-						theme="dark"
-						previewTheme="github"
-						codeTheme="github"
-						:showCodeRowNumber="false"
-						:tabSize="4"
-						class="markdown-content custom-md-theme"
-					/>
+				<div class="content-container">
+					<!-- 文章大纲 -->
+					<aside v-if="showOutline" class="article-outline" :class="{ 'collapsed': isOutlineCollapsed }">
+						<div class="outline-header">
+							<h3 class="outline-title">📑 文章目录</h3>
+							<button 
+								class="outline-toggle" 
+								@click="toggleOutline"
+								:title="isOutlineCollapsed ? '展开目录' : '折叠目录'"
+							>
+								{{ isOutlineCollapsed ? '📄' : '📋' }}
+							</button>
+						</div>
+						<nav class="outline-nav" v-show="!isOutlineCollapsed">
+							<ul class="outline-list">
+								<li 
+									v-for="item in outline" 
+									:key="item.id"
+									class="outline-item"
+									:class="{
+										'active': activeOutlineId === item.id,
+										[`level-${item.level}`]: true
+									}"
+								>
+									<a 
+										:href="`#${item.id}`"
+										@click.prevent="scrollToHeading(item.id)"
+										class="outline-link"
+									>
+										{{ item.title }}
+									</a>
+								</li>
+							</ul>
+						</nav>
+					</aside>
+					
+					<!-- 文章内容 -->
+					<div class="content-wrapper" :class="{ 'with-outline': showOutline }">
+						<!-- Markdown 内容渲染 -->
+						<MdPreview 
+							:modelValue="article.content" 
+							theme="dark"
+							previewTheme="github"
+							codeTheme="github"
+							:showCodeRowNumber="false"
+							:tabSize="4"
+							class="markdown-content custom-md-theme"
+						/>
+					</div>
 				</div>
 			</main>
 			
@@ -385,7 +554,7 @@ onMounted(() => {
 
 /* 文章详情 */
 .article-detail {
-	max-width: 900px;
+	max-width: 1300px;
 	margin: 0 auto;
 	padding: 0 2rem;
 }
@@ -453,6 +622,14 @@ onMounted(() => {
 	gap: 0.25rem;
 }
 
+/* 分类和标签组合 */
+.category-tags-group {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
 .article-category {
 	background: rgba(100, 255, 218, 0.1);
 	color: var(--accent);
@@ -460,6 +637,30 @@ onMounted(() => {
 	border-radius: 12px;
 	font-size: 0.75rem;
 	font-weight: 500;
+}
+
+/* 内联标签样式 */
+.article-tags-inline {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	flex-wrap: wrap;
+}
+
+.tag-inline {
+	background: rgba(100, 255, 218, 0.05);
+	color: var(--text-secondary);
+	padding: 0.2rem 0.5rem;
+	border-radius: 8px;
+	font-size: 0.7rem;
+	border: 1px solid rgba(100, 255, 218, 0.1);
+	transition: all 0.3s ease;
+}
+
+.tag-inline:hover {
+	background: rgba(100, 255, 218, 0.1);
+	border-color: var(--accent);
+	color: var(--accent);
 }
 
 .pin-badge {
@@ -518,28 +719,7 @@ onMounted(() => {
 	gap: 0.25rem;
 }
 
-/* 文章标签 */
-.article-tags {
-	display: flex;
-	justify-content: center;
-	flex-wrap: wrap;
-	gap: 0.5rem;
-}
 
-.tag {
-	background: rgba(100, 255, 218, 0.05);
-	color: var(--text-secondary);
-	padding: 0.25rem 0.75rem;
-	border-radius: 12px;
-	font-size: 0.75rem;
-	border: 1px solid rgba(100, 255, 218, 0.1);
-	transition: all 0.3s ease;
-}
-
-.tag:hover {
-	background: rgba(100, 255, 218, 0.1);
-	border-color: var(--accent);
-}
 
 /* 封面图片 */
 .article-cover {
@@ -561,11 +741,185 @@ onMounted(() => {
 	margin-bottom: 3rem;
 }
 
+.content-container {
+	display: flex;
+	gap: 2rem;
+	align-items: flex-start;
+}
+
+/* 文章大纲 */
+.article-outline {
+	position: sticky;
+	top: 100px;
+	width: 280px;
+	flex-shrink: 0;
+	background: rgba(26, 35, 50, 0.9);
+	backdrop-filter: blur(15px);
+	border-radius: 16px;
+	border: 1px solid rgba(100, 255, 218, 0.1);
+	padding: 1.5rem;
+	max-height: calc(100vh - 120px);
+	overflow-y: auto;
+	z-index: 10;
+}
+
+.outline-header {
+	margin-bottom: 1rem;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid rgba(100, 255, 218, 0.1);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.outline-title {
+	font-size: 1rem;
+	font-weight: 600;
+	color: var(--text-primary);
+	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex: 1;
+}
+
+.outline-toggle {
+	background: none;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	font-size: 1rem;
+	padding: 0.25rem;
+	border-radius: 4px;
+	transition: all 0.3s ease;
+	opacity: 0.7;
+	display: none; /* 默认隐藏，在移动端显示 */
+}
+
+.outline-toggle:hover {
+	background: rgba(100, 255, 218, 0.1);
+	color: var(--accent);
+	opacity: 1;
+}
+
+.article-outline.collapsed {
+	width: auto;
+	min-width: 180px;
+}
+
+.article-outline.collapsed .outline-header {
+	margin-bottom: 0;
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.outline-nav {
+	position: relative;
+}
+
+.outline-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.outline-item {
+	margin-bottom: 0.25rem;
+	position: relative;
+}
+
+.outline-link {
+	display: block;
+	padding: 0.5rem 0.75rem;
+	color: var(--text-secondary);
+	text-decoration: none;
+	font-size: 0.875rem;
+	line-height: 1.4;
+	border-radius: 6px;
+	transition: all 0.3s ease;
+	border-left: 2px solid transparent;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.outline-link:hover {
+	background: rgba(100, 255, 218, 0.05);
+	color: var(--text-primary);
+	border-left-color: rgba(100, 255, 218, 0.3);
+}
+
+.outline-item.active .outline-link {
+	background: rgba(100, 255, 218, 0.1);
+	color: var(--accent);
+	border-left-color: var(--accent);
+	font-weight: 500;
+}
+
+/* 不同级别的标题缩进 */
+.outline-item.level-1 .outline-link {
+	padding-left: 0.75rem;
+	font-weight: 600;
+}
+
+.outline-item.level-2 .outline-link {
+	padding-left: 1.25rem;
+	font-size: 0.8rem;
+}
+
+.outline-item.level-3 .outline-link {
+	padding-left: 1.75rem;
+	font-size: 0.75rem;
+}
+
+.outline-item.level-4 .outline-link {
+	padding-left: 2.25rem;
+	font-size: 0.75rem;
+	opacity: 0.8;
+}
+
+.outline-item.level-5 .outline-link {
+	padding-left: 2.75rem;
+	font-size: 0.7rem;
+	opacity: 0.7;
+}
+
+.outline-item.level-6 .outline-link {
+	padding-left: 3.25rem;
+	font-size: 0.7rem;
+	opacity: 0.6;
+}
+
+/* 自定义滚动条 */
+.article-outline::-webkit-scrollbar {
+	width: 4px;
+}
+
+.article-outline::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.article-outline::-webkit-scrollbar-thumb {
+	background: rgba(100, 255, 218, 0.2);
+	border-radius: 2px;
+}
+
+.article-outline::-webkit-scrollbar-thumb:hover {
+	background: rgba(100, 255, 218, 0.3);
+}
+
 .content-wrapper {
-	background: var(--bg-secondary);
+	background: rgba(26, 35, 50, 0.9);
+	backdrop-filter: blur(15px);
 	border-radius: 16px;
 	padding: 3rem;
 	border: 1px solid rgba(100, 255, 218, 0.1);
+	flex: 1;
+	min-width: 0;
+}
+
+.content-wrapper.with-outline {
+	margin-left: 0;
 }
 
 /* Markdown 内容样式 - 自定义主题以匹配设计风格 */
@@ -637,6 +991,23 @@ onMounted(() => {
 	padding-bottom: 0.5rem;
 	margin-top: 2rem;
 	margin-bottom: 1rem;
+	scroll-margin-top: 100px; /* 为滚动锚点留出导航栏空间 */
+	position: relative;
+}
+
+/* 为标题添加锚点链接样式 */
+.custom-md-theme :deep(.md-editor-preview h1:target),
+.custom-md-theme :deep(.md-editor-preview h2:target),
+.custom-md-theme :deep(.md-editor-preview h3:target),
+.custom-md-theme :deep(.md-editor-preview h4:target),
+.custom-md-theme :deep(.md-editor-preview h5:target),
+.custom-md-theme :deep(.md-editor-preview h6:target) {
+	background: rgba(100, 255, 218, 0.05) !important;
+	padding: 0.5rem !important;
+	margin: 2rem -0.5rem 1rem -0.5rem !important;
+	border-radius: 8px !important;
+	border-bottom: 2px solid var(--accent) !important;
+	transition: all 0.3s ease !important;
 }
 
 .custom-md-theme :deep(.md-editor-preview p) {
@@ -920,6 +1291,79 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
+@media (max-width: 1200px) {
+	.article-outline {
+		width: 240px;
+	}
+	
+	.content-container {
+		gap: 1.5rem;
+	}
+}
+
+@media (max-width: 1024px) {
+	.content-container {
+		flex-direction: column;
+	}
+	
+	.article-outline {
+		position: relative;
+		top: auto;
+		width: 100%;
+		max-height: 300px;
+		order: -1;
+		margin-bottom: 1rem;
+	}
+	
+	.article-outline.collapsed {
+		width: 100%;
+		min-width: auto;
+	}
+	
+	.outline-title {
+		font-size: 0.9rem;
+	}
+	
+	.outline-toggle {
+		display: block;
+	}
+	
+	.outline-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	
+	.outline-item {
+		margin-bottom: 0;
+	}
+	
+	.outline-link {
+		padding: 0.4rem 0.8rem;
+		font-size: 0.75rem;
+		white-space: nowrap;
+		border-radius: 12px;
+		border-left: none;
+		background: rgba(100, 255, 218, 0.05);
+	}
+	
+	.outline-item.level-1 .outline-link,
+	.outline-item.level-2 .outline-link,
+	.outline-item.level-3 .outline-link,
+	.outline-item.level-4 .outline-link,
+	.outline-item.level-5 .outline-link,
+	.outline-item.level-6 .outline-link {
+		padding-left: 0.8rem;
+		font-size: 0.75rem;
+		opacity: 1;
+	}
+	
+	.outline-item.active .outline-link {
+		background: rgba(100, 255, 218, 0.15);
+		border-left: none;
+	}
+}
+
 @media (max-width: 768px) {
 	.article-detail {
 		padding: 0 1rem;
@@ -937,6 +1381,19 @@ onMounted(() => {
 		gap: 1rem;
 	}
 	
+	.article-meta {
+		gap: 0.75rem;
+	}
+	
+	.category-tags-group {
+		gap: 0.25rem;
+	}
+	
+	.tag-inline {
+		font-size: 0.65rem;
+		padding: 0.15rem 0.4rem;
+	}
+	
 	.article-actions {
 		flex-direction: column;
 		align-items: center;
@@ -952,6 +1409,20 @@ onMounted(() => {
 	
 	.breadcrumb-current {
 		max-width: 150px;
+	}
+	
+	.article-outline {
+		padding: 1rem;
+		max-height: 200px;
+	}
+	
+	.outline-list {
+		gap: 0.25rem;
+	}
+	
+	.outline-link {
+		padding: 0.3rem 0.6rem;
+		font-size: 0.7rem;
 	}
 }
 </style> 
