@@ -3,11 +3,17 @@
 		<div class="article-meta">
 			<div class="article-date">
 				<span>📅</span>
-				<span>{{ article.date }}</span>
+				<span>{{ formatDate(article.date) }}</span>
 			</div>
 			<span class="article-category">
 				{{ article.category }}
 			</span>
+		<div v-if="article.tags && article.tags.length > 0" class="article-tags">
+			<span v-for="tag in article.tags" :key="tag" class="tag">
+				{{ tag }}
+			</span>
+		</div>
+
 		</div>
 
 		<h3 class="article-title">
@@ -32,6 +38,7 @@ interface Article {
 	category: string;
 	title: string;
 	excerpt: string;
+	tags: string[];
 }
 
 interface Props {
@@ -44,6 +51,15 @@ const cardRef = ref<HTMLElement>();
 const isVisible = ref(false);
 
 const router = useRouter();
+
+const formatDate = (dateString: string) => {
+	const date = new Date(dateString);
+	return date.toLocaleDateString('zh-CN', {
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit'
+	}).replace(/\//g, '-');
+};
 
 const readMore = () => {
 	// 后续可以实现跳转到文章详情页
@@ -138,6 +154,22 @@ onMounted(() => {
 	border-radius: 20px;
 	font-size: 0.8rem;
 	font-weight: 500;
+}
+
+.article-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	align-items: center;
+}
+
+.tag {
+	background: rgba(100, 255, 218, 0.05);
+	color: var(--text-secondary);
+	padding: 0.25rem 0.5rem;
+	border-radius: 8px;
+	font-size: 0.75rem;
+	border: 1px solid rgba(100, 255, 218, 0.1);
 }
 
 .article-title {
