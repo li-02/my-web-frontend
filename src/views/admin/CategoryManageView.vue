@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from "vue";
 import type { Category, CategoryFormData, CategoryQueryParams } from "@/type/category";
 import { categoryAPI } from "@/api/category";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { formatDateTime } from "@/utils/dateFormat";
 
 // 分类列表数据
@@ -147,57 +147,88 @@ const saveCategory = async () => {
 		return;
 	}
 
-	if (editingCategory.value) {
-		// 编辑分类
-		const index = categories.value.findIndex((cat) => cat.id === editingCategory.value!.id);
-		if (index > -1) {
-			categories.value[index] = {
-				...categories.value[index],
+	try {
+		if (editingCategory.value) {
+			// 编辑分类
+			console.log("更新分类:", editingCategory.value);
+			await categoryAPI.updateCategory(editingCategory.value.id, formData.value.name.trim(), formData.value.description.trim());
+			
+			// 更新本地数据
+			const index = categories.value.findIndex((cat) => cat.id === editingCategory.value!.id);
+			if (index > -1) {
+				categories.value[index] = {
+					...categories.value[index],
+					name: formData.value.name.trim(),
+					description: formData.value.description.trim(),
+					updateTime: new Date().toISOString(),
+				};
+				// 同步更新过滤后的列表
+				const filteredIndex = filteredCategories.value.findIndex((cat) => cat.id === editingCategory.value!.id);
+				if (filteredIndex > -1) {
+					filteredCategories.value[filteredIndex] = categories.value[index];
+				}
+			}
+			
+			ElMessage.success('分类更新成功');
+		} else {
+			// 新增分类 
+			console.log("新增分类");
+			await categoryAPI.createCategory({
 				name: formData.value.name.trim(),
-				description: formData.value.description.trim(),
-			};
+				description: formData.value.description.trim()
+			});
+			
+			// 重新加载分类列表以获取最新数据
+			await loadCategories();
+			ElMessage.success('分类创建成功');
 		}
-		console.log("更新分类:", editingCategory.value!.id, formData.value);
-	} else {
-		// 新增分类
-		const newCategory: Category = {
-			id: Date.now(), // 简单的ID生成
-			name: formData.value.name.trim(),
-			description: formData.value.description.trim(),
-			createTime: new Date().toISOString(),
-			updateTime: new Date().toISOString(),
-			deleteTime: null,
-			deleted: false,
-			articleCount: 0,
-		};
-		categories.value.unshift(newCategory);
-		total.value++;
-		console.log("新增分类:", newCategory);
+		
+		closeModal();
+	} catch (error: any) {
+		console.error('保存分类失败:', error);
+		ElMessage.error(error.response?.data?.message || '保存分类失败，请重试');
 	}
-
-	// 重新加载分类列表
-	await loadCategories();
-	closeModal();
 };
 
 // 删除分类
 const deleteCategory = async (category: Category) => {
 	const articleCount = category.articleCount || 0;
 	if (articleCount > 0) {
-		alert(`该分类下还有 ${articleCount} 篇文章，无法删除`);
+		ElMessageBox.alert(
+			`该分类下还有 ${articleCount} 篇文章，无法删除`,
+			'无法删除',
+			{
+				confirmButtonText: '知道了',
+				type: 'warning',
+				customClass: 'custom-message-box',
+			}
+		);
 		return;
 	}
 
-	if (confirm(`确定要删除分类"${category.name}"吗？`)) {
-		const index = categories.value.findIndex((cat) => cat.id === category.id);
-		if (index > -1) {
-			categories.value.splice(index, 1);
-			total.value--;
-		}
-
+	try {
+		await ElMessageBox.confirm(
+			`确定要删除分类"${category.name}"吗？此操作不可恢复。`,
+			'删除确认',
+			{
+				confirmButtonText: '确定删除',
+				cancelButtonText: '取消',
+				type: 'warning',
+				customClass: 'custom-message-box',
+				confirmButtonClass: 'custom-confirm-btn',
+				cancelButtonClass: 'custom-cancel-btn',
+			}
+		);
+		
+		await categoryAPI.deleteCategory(category.id);
 		// 重新加载分类列表
 		await loadCategories();
-		console.log("删除分类:", category.id);
+		ElMessage.success('分类删除成功');
+	} catch (error: any) {
+		if (error !== 'cancel') {
+			console.error('删除分类失败:', error);
+			ElMessage.error(error.response?.data?.message || '删除分类失败，请重试');
+		}
 	}
 };
 
@@ -1001,5 +1032,103 @@ onMounted(() => {
 	50% {
 		opacity: 1;
 	}
+}
+
+/* ElementPlus MessageBox 自定义样式 */
+:global(.custom-message-box) {
+	background: var(--bg-secondary) !important;
+	border: 1px solid rgba(100, 255, 218, 0.2) !important;
+	border-radius: 12px !important;
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+:global(.custom-message-box .el-message-box__header) {
+	background: transparent !important;
+	border-bottom: 1px solid rgba(100, 255, 218, 0.1) !important;
+	padding: 20px 24px 16px !important;
+}
+
+:global(.custom-message-box .el-message-box__title) {
+	color: var(--text-primary) !important;
+	font-weight: 600 !important;
+	font-size: 18px !important;
+}
+
+:global(.custom-message-box .el-message-box__content) {
+	padding: 20px 24px !important;
+	color: var(--text-secondary) !important;
+	background: transparent !important;
+}
+
+:global(.custom-message-box .el-message-box__message) {
+	color: var(--text-secondary) !important;
+	font-size: 15px !important;
+	line-height: 1.5 !important;
+}
+
+:global(.custom-message-box .el-message-box__btns) {
+	padding: 16px 24px 20px !important;
+	background: transparent !important;
+	border-top: 1px solid rgba(100, 255, 218, 0.1) !important;
+}
+
+:global(.custom-message-box .el-button) {
+	border-radius: 8px !important;
+	font-weight: 500 !important;
+	padding: 10px 20px !important;
+	transition: all 0.3s ease !important;
+}
+
+:global(.custom-message-box .custom-confirm-btn) {
+	background: #ff6b6b !important;
+	border-color: #ff6b6b !important;
+	color: white !important;
+}
+
+:global(.custom-message-box .custom-confirm-btn:hover) {
+	background: #ff5252 !important;
+	border-color: #ff5252 !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3) !important;
+}
+
+:global(.custom-message-box .custom-cancel-btn) {
+	background: transparent !important;
+	border: 1px solid rgba(100, 255, 218, 0.3) !important;
+	color: var(--text-secondary) !important;
+}
+
+:global(.custom-message-box .custom-cancel-btn:hover) {
+	border-color: var(--accent) !important;
+	color: var(--accent) !important;
+	background: rgba(100, 255, 218, 0.05) !important;
+}
+
+:global(.custom-message-box .el-button--primary) {
+	background: var(--accent) !important;
+	border-color: var(--accent) !important;
+	color: var(--bg-primary) !important;
+}
+
+:global(.custom-message-box .el-button--primary:hover) {
+	background: var(--accent-hover) !important;
+	border-color: var(--accent-hover) !important;
+	transform: translateY(-1px) !important;
+	box-shadow: 0 4px 12px rgba(100, 255, 218, 0.3) !important;
+}
+
+:global(.custom-message-box .el-message-box__close) {
+	color: var(--text-secondary) !important;
+	font-size: 16px !important;
+}
+
+:global(.custom-message-box .el-message-box__close:hover) {
+	color: #ff6b6b !important;
+}
+
+/* 警告图标样式 */
+:global(.custom-message-box .el-message-box__status.el-icon) {
+	color: #f39c12 !important;
+	font-size: 20px !important;
 }
 </style>

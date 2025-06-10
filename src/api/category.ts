@@ -18,13 +18,13 @@ export const categoryAPI = {
 
 	// 创建分类（需要认证）
 	createCategory: (category: CreateCategoryRequest): Promise<ApiResponse<any>> => 
-		api.post("/category/categories", category),
+		api.post("/category/create", category),
 
 	// 更新分类（需要认证）
-	updateCategory: (id: number, category: UpdateCategoryRequest): Promise<ApiResponse<any>> => 
-		api.put(`/category/categories/${id}`, category),
+	updateCategory: (id: number, name: string, description: string): Promise<ApiResponse<any>> => 
+		api.put('/category/update', { id, name, description }),
 
 	// 删除分类（需要认证）
 	deleteCategory: (id: number): Promise<ApiResponse<any>> => 
-		api.delete(`/category/categories/${id}`),
+		api.delete(`/category/delete/${id}`),
 };
