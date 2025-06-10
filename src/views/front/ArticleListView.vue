@@ -111,26 +111,26 @@ const loadArticles = async () => {
 		const response = await articleAPI.getArticles(params);
 		
 		// 处理分页数据
-		if (response.data.content) {
+		if (response.data.data.content) {
 			// 分页响应格式
-			articles.value = response.data.content.map((article: any) => ({
+			articles.value = response.data.data.content.map((article: any) => ({
 				...article,
 				date: article.publishTime || article.createTime,
 				category: article.categoryName || '未分类',
 				excerpt: article.summary || article.content?.substring(0, 150) + '...' || '暂无摘要'
 			}));
-			totalElements.value = response.data.totalElements;
-			totalPages.value = response.data.totalPages;
+			totalElements.value = response.data.data.totalElements;
+			totalPages.value = response.data.data.totalPages;
 		} else {
 			// 简单数组响应格式
-			articles.value = response.data.map((article: any) => ({
+			articles.value = response.data.data.map((article: any) => ({
 				...article,
 				date: article.publishTime || article.createTime,
 				category: article.categoryName || '未分类',
 				excerpt: article.summary || article.content?.substring(0, 150) + '...' || '暂无摘要'
 			}));
-			totalElements.value = response.data.length;
-			totalPages.value = Math.ceil(response.data.length / pageSize.value);
+			totalElements.value = response.data.data.length;
+			totalPages.value = Math.ceil(response.data.data.length / pageSize.value);
 		}
 		
 		console.log("文章列表加载成功:", articles.value);

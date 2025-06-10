@@ -64,7 +64,7 @@ const loadArticles = async () => {
 		});
 		
 		// 转换数据格式以兼容ArticleCard组件
-		const rawArticles = response.data.content || response.data;
+		const rawArticles = response.data.data.content || response.data.data;
 		articles.value = rawArticles.map((article: any) => ({
 			...article,
 			date: article.publishTime || article.createTime,
