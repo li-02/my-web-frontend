@@ -3,7 +3,8 @@ import api from "@/api/index.ts";
 
 export const tagAPI = {
 	// 获取所有标签（公开接口）
-	getTags: () => api.get("/tag/tags"),
+	getTags: (params?: { page?: number; size?: number; keyword?: string }) => 
+		api.get("/tag/tags", { params }),
 
 	// 获取热门标签（按使用频率排序）
 	getPopularTags: (limit?: number) => api.get("/tag/popular", { params: { limit } }),
@@ -21,7 +22,7 @@ export const tagAPI = {
 	updateTag: (id: string, tag: { name: string }) => api.put(`/admin/tags/${id}`, tag),
 
 	// 删除标签（需要认证）
-	deleteTag: (id: string) => api.delete(`/admin/tags/${id}`),
+	deleteTag: (id: number) => api.delete(`/tag/delete/${id}`),
 
 	// 批量创建标签（如果不存在则创建）
 	createTagsIfNotExist: (tagNames: string[]) => api.post("/admin/tags/batch", { tagNames }),
