@@ -1,3 +1,242 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from "vue";
+import { tagAPI } from "@/api/tag.ts";
+import { ElMessage } from "element-plus";
+
+interface Tag {
+	id: number;
+	name: string;
+	usageCount: number;
+	createTime: string;
+}
+
+// 响应式数据
+const tags = ref<Tag[]>([]);
+const searchKeyword = ref("");
+const showCreateDialog = ref(false);
+const showEditDialog = ref(false);
+const showDeleteDialog = ref(false);
+const isEditing = ref(false);
+const tagToDelete = ref<Tag | null>(null);
+const deleteError = ref("");
+
+// 分页相关状态
+const currentPage = ref(1);
+const pageSize = ref(10);
+const totalTags = ref(0);
+const loading = ref(false);
+
+// 表单数据
+const tagForm = ref({
+	id: null as number | null,
+	name: "",
+});
+
+// 计算属性
+const filteredTags = computed(() => {
+	if (!searchKeyword.value) {
+		return tags.value;
+	}
+	return tags.value.filter((tag) => tag.name.toLowerCase().includes(searchKeyword.value.toLowerCase()));
+});
+
+// 分页相关计算属性
+const totalPages = computed(() => {
+	return Math.ceil(totalTags.value / pageSize.value);
+});
+
+const hasNextPage = computed(() => {
+	return currentPage.value < totalPages.value;
+});
+
+const hasPrevPage = computed(() => {
+	return currentPage.value > 1;
+});
+
+// 生成页码数组（显示当前页前后各2页）
+const getPageNumbers = computed(() => {
+	const pages: number[] = [];
+	const total = totalPages.value;
+	const current = currentPage.value;
+	
+	if (total <= 7) {
+		// 总页数小于等于7，显示所有页码
+		for (let i = 1; i <= total; i++) {
+			pages.push(i);
+		}
+	} else {
+		// 总页数大于7，显示部分页码
+		if (current <= 4) {
+			// 当前页在前面
+			for (let i = 1; i <= 5; i++) {
+				pages.push(i);
+			}
+			pages.push(-1); // -1 表示省略号
+			pages.push(total);
+		} else if (current >= total - 3) {
+			// 当前页在后面
+			pages.push(1);
+			pages.push(-1);
+			for (let i = total - 4; i <= total; i++) {
+				pages.push(i);
+			}
+		} else {
+			// 当前页在中间
+			pages.push(1);
+			pages.push(-1);
+			for (let i = current - 1; i <= current + 1; i++) {
+				pages.push(i);
+			}
+			pages.push(-1);
+			pages.push(total);
+		}
+	}
+	
+	return pages;
+});
+
+// 方法
+const loadTags = async (page = currentPage.value, size = pageSize.value, keyword = searchKeyword.value) => {
+	try {
+		loading.value = true;
+		const params = {
+			page: page - 1, // 后端通常从0开始计数
+			size,
+			keyword: keyword || undefined
+		};
+		
+		const response = await tagAPI.getTags(params);
+		tags.value = response.data.data;
+		totalTags.value = response.data.total || 0;
+		currentPage.value = page;
+	} catch (error) {
+		console.error("获取标签列表失败:", error);
+		ElMessage.error("获取标签列表失败，请稍后重试");
+	} finally {
+		loading.value = false;
+	}
+};
+
+const editTag = (tag: Tag) => {
+	isEditing.value = true;
+	tagForm.value = {
+		id: tag.id,
+		name: tag.name,
+	};
+	showEditDialog.value = true;
+};
+
+const confirmDelete = (tag: Tag) => {
+	tagToDelete.value = tag;
+	deleteError.value = "";
+	
+	// 检查标签是否有关联文章
+	if (tag.usageCount > 0) {
+		deleteError.value = `该标签关联了 ${tag.usageCount} 篇文章，无法删除。请先移除相关文章中的该标签后再删除。`;
+	}
+	
+	showDeleteDialog.value = true;
+};
+
+const saveTag = async () => {
+	try {
+		if (isEditing.value) {
+			// 更新标签
+			await tagAPI.updateTag(tagForm.value.id!.toString(), { name: tagForm.value.name });
+			ElMessage.success("更新标签成功");
+		} else {
+			// 创建新标签
+			await tagAPI.createTag(tagForm.value.name);
+			ElMessage.success("创建标签成功");
+		}
+		// 重新加载标签列表以获取最新数据
+		await loadTags();
+		closeDialog();
+	} catch (error) {
+		console.error("保存标签失败:", error);
+		if (isEditing.value) {
+			ElMessage.error("更新标签失败，请稍后重试");
+		} else {
+			ElMessage.error("创建标签失败，请稍后重试");
+		}
+	}
+};
+
+const deleteTag = async () => {
+	try {
+		if (tagToDelete.value) {
+			// 再次检查是否有关联文章
+			if (tagToDelete.value.usageCount > 0) {
+				deleteError.value = `该标签关联了 ${tagToDelete.value.usageCount} 篇文章，无法删除。请先移除相关文章中的该标签后再删除。`;
+				return;
+			}
+			
+			await tagAPI.deleteTag(tagToDelete.value.id);
+			// 重新加载标签列表以获取最新数据
+			await loadTags();
+			closeDeleteDialog();
+			ElMessage.success("删除标签成功");
+		}
+	} catch (error) {
+		console.error("删除标签失败:", error);
+		deleteError.value = "删除标签失败，请稍后重试";
+		ElMessage.error("删除标签失败，请稍后重试");
+	}
+};
+
+const closeDialog = () => {
+	showCreateDialog.value = false;
+	showEditDialog.value = false;
+	isEditing.value = false;
+	tagForm.value = { id: null, name: "" };
+};
+
+const closeDeleteDialog = () => {
+	showDeleteDialog.value = false;
+	tagToDelete.value = null;
+	deleteError.value = "";
+};
+
+const formatDate = (dateString: string) => {
+	return new Date(dateString).toLocaleDateString("zh-CN");
+};
+
+// 分页相关方法
+const changePage = (page: number) => {
+	if (page >= 1 && page <= totalPages.value) {
+		loadTags(page);
+	}
+};
+
+const handleSearch = () => {
+	currentPage.value = 1;
+	loadTags(1, pageSize.value, searchKeyword.value);
+};
+
+// 重置搜索
+const resetSearch = () => {
+	searchKeyword.value = "";
+	currentPage.value = 1;
+	loadTags(1, pageSize.value, "");
+};
+
+// 监听搜索关键词变化
+let searchTimer: number | null = null;
+const onSearchInput = () => {
+	if (searchTimer) {
+		clearTimeout(searchTimer);
+	}
+	searchTimer = setTimeout(() => {
+		handleSearch();
+	}, 500);
+};
+
+// 组件挂载时加载数据
+onMounted(() => {
+	loadTags();
+});
+</script>
+
 <template>
 	<div class="tag-manage">
 		<div class="page-header">
@@ -10,31 +249,44 @@
 
 		<!-- 搜索和筛选区域 -->
 		<div class="search-section">
-			<div class="search-box">
-				<input v-model="searchKeyword" type="text" placeholder="搜索标签名称..." class="search-input" />
-				<span class="search-icon">🔍</span>
+			<div class="search-left">
+				<div class="search-box">
+					<input 
+						v-model="searchKeyword" 
+						type="text" 
+						placeholder="搜索标签名称..." 
+						class="search-input" 
+						@input="onSearchInput"
+						@keyup.enter="handleSearch"
+					/>
+					<span class="search-icon">🔍</span>
+				</div>
+				<button class="reset-btn" @click="resetSearch" title="重置搜索">
+					<span>🔄</span>
+					重置
+				</button>
+			</div>
+			<div class="search-right">
+				<div class="total-count">
+					<span class="count-value">{{ totalTags }}</span>
+					<span class="count-label">总标签数</span>
+				</div>
 			</div>
 		</div>
 
-		<!-- 标签统计 -->
-		<div class="stats-section">
-			<div class="stat-item">
-				<span class="stat-value">{{ filteredTags.length }}</span>
-				<span class="stat-label">总标签数</span>
-			</div>
-			<div class="stat-item">
-				<span class="stat-value">{{ totalArticleCount }}</span>
-				<span class="stat-label">关联文章数</span>
-			</div>
+		<!-- 加载状态 -->
+		<div v-if="loading" class="loading-state">
+			<div class="loading-spinner"></div>
+			<div class="loading-text">加载中...</div>
 		</div>
 
 		<!-- 标签列表 -->
-		<div class="tags-grid">
-			<div v-for="tag in filteredTags" :key="tag.id" class="tag-card">
+		<div v-else class="tags-grid">
+			<div v-for="tag in tags" :key="tag.id" class="tag-card">
 				<div class="tag-info">
 					<div class="tag-name"># {{ tag.name }}</div>
 					<div class="tag-meta">
-						<span class="article-count">{{ tag.articleCount }} 篇文章</span>
+						<span class="article-count">{{ tag.usageCount }} 篇文章</span>
 						<span class="create-date">{{ formatDate(tag.createTime) }}</span>
 					</div>
 				</div>
@@ -50,10 +302,51 @@
 		</div>
 
 		<!-- 空状态 -->
-		<div v-if="filteredTags.length === 0" class="empty-state">
+		<div v-if="!loading && tags.length === 0" class="empty-state">
 			<div class="empty-icon">🏷️</div>
 			<div class="empty-title">暂无标签</div>
-			<div class="empty-description">还没有创建任何标签，点击上方按钮创建第一个标签吧！</div>
+			<div class="empty-description">
+				{{ searchKeyword ? '没有找到相关标签，请尝试其他关键词' : '还没有创建任何标签，点击上方按钮创建第一个标签吧！' }}
+			</div>
+		</div>
+
+		<!-- 分页组件 -->
+		<div v-if="!loading && totalPages > 1" class="pagination-section">
+			<div class="pagination-info">
+				第 {{ currentPage }} 页，共 {{ totalPages }} 页，总共 {{ totalTags }} 条记录
+			</div>
+			
+			<div class="pagination">
+				<button 
+					class="page-btn" 
+					:disabled="!hasPrevPage" 
+					@click="changePage(currentPage - 1)"
+				>
+					上一页
+				</button>
+				
+				<div class="page-numbers">
+					<template v-for="page in getPageNumbers" :key="page">
+						<span v-if="page === -1" class="page-ellipsis">...</span>
+						<button 
+							v-else
+							class="page-btn" 
+							:class="{ active: page === currentPage }"
+							@click="changePage(page)"
+						>
+							{{ page }}
+						</button>
+					</template>
+				</div>
+				
+				<button 
+					class="page-btn" 
+					:disabled="!hasNextPage" 
+					@click="changePage(currentPage + 1)"
+				>
+					下一页
+				</button>
+			</div>
 		</div>
 
 		<!-- 创建/编辑标签对话框 -->
@@ -90,152 +383,23 @@
 					<p>
 						确定要删除标签 <strong>"{{ tagToDelete?.name }}"</strong> 吗？
 					</p>
-					<p class="warning-text">此操作不可撤销，删除后该标签将从所有文章中移除。</p>
+					<p v-if="deleteError" class="error-text">{{ deleteError }}</p>
+					<p v-else class="warning-text">此操作不可撤销，删除后该标签将从所有文章中移除。</p>
 				</div>
 				<div class="dialog-footer">
 					<button class="btn btn-secondary" @click="closeDeleteDialog">取消</button>
-					<button class="btn btn-danger" @click="deleteTag">确定删除</button>
+					<button 
+						class="btn btn-danger" 
+						@click="deleteTag" 
+						:disabled="!!deleteError"
+					>
+						确定删除
+					</button>
 				</div>
 			</div>
 		</div>
 	</div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
-import { tagAPI } from "@/api/tag.ts";
-
-interface Tag {
-	id: number;
-	name: string;
-	articleCount: number;
-	createTime: string;
-}
-
-// 响应式数据
-const tags = ref<Tag[]>([]);
-const searchKeyword = ref("");
-const showCreateDialog = ref(false);
-const showEditDialog = ref(false);
-const showDeleteDialog = ref(false);
-const isEditing = ref(false);
-const tagToDelete = ref<Tag | null>(null);
-
-// 表单数据
-const tagForm = ref({
-	id: null as number | null,
-	name: "",
-});
-
-// 计算属性
-const filteredTags = computed(() => {
-	if (!searchKeyword.value) {
-		return tags.value;
-	}
-	return tags.value.filter((tag) => tag.name.toLowerCase().includes(searchKeyword.value.toLowerCase()));
-});
-
-const totalArticleCount = computed(() => {
-	return tags.value.reduce((total, tag) => total + tag.articleCount, 0);
-});
-
-// 方法
-const loadTags = async () => {
-	try {
-		// 模拟数据，实际应该调用API
-		tags.value = [
-			{ id: 1, name: "Vue.js", articleCount: 8, createTime: "2024-01-15" },
-			{ id: 2, name: "Spring Boot", articleCount: 12, createTime: "2024-01-20" },
-			{ id: 3, name: "数据库", articleCount: 6, createTime: "2024-02-01" },
-			{ id: 4, name: "前端开发", articleCount: 15, createTime: "2024-02-10" },
-			{ id: 5, name: "后端开发", articleCount: 10, createTime: "2024-02-15" },
-			{ id: 6, name: "微服务", articleCount: 4, createTime: "2024-03-01" },
-			{ id: 7, name: "性能优化", articleCount: 3, createTime: "2024-03-05" },
-			{ id: 8, name: "架构设计", articleCount: 7, createTime: "2024-03-10" },
-		];
-		// const response = await tagAPI.getTags();
-		// tags.value = response.data;
-	} catch (error) {
-		console.error("获取标签列表失败:", error);
-	}
-};
-
-const editTag = (tag: Tag) => {
-	isEditing.value = true;
-	tagForm.value = {
-		id: tag.id,
-		name: tag.name,
-	};
-	showEditDialog.value = true;
-};
-
-const confirmDelete = (tag: Tag) => {
-	tagToDelete.value = tag;
-	showDeleteDialog.value = true;
-};
-
-const saveTag = async () => {
-	try {
-		if (isEditing.value) {
-			// 更新标签
-			// await tagAPI.updateTag(tagForm.value.id!, tagForm.value);
-			const index = tags.value.findIndex((t) => t.id === tagForm.value.id);
-			if (index !== -1) {
-				tags.value[index].name = tagForm.value.name;
-			}
-		} else {
-			// 创建新标签
-			// const response = await tagAPI.createTag(tagForm.value);
-			const newTag: Tag = {
-				id: Date.now(),
-				name: tagForm.value.name,
-				articleCount: 0,
-				createTime: new Date().toISOString().split("T")[0],
-			};
-			tags.value.unshift(newTag);
-		}
-		closeDialog();
-	} catch (error) {
-		console.error("保存标签失败:", error);
-	}
-};
-
-const deleteTag = async () => {
-	try {
-		if (tagToDelete.value) {
-			// await tagAPI.deleteTag(tagToDelete.value.id.toString());
-			const index = tags.value.findIndex((t) => t.id === tagToDelete.value!.id);
-			if (index !== -1) {
-				tags.value.splice(index, 1);
-			}
-		}
-		closeDeleteDialog();
-	} catch (error) {
-		console.error("删除标签失败:", error);
-	}
-};
-
-const closeDialog = () => {
-	showCreateDialog.value = false;
-	showEditDialog.value = false;
-	isEditing.value = false;
-	tagForm.value = { id: null, name: "" };
-};
-
-const closeDeleteDialog = () => {
-	showDeleteDialog.value = false;
-	tagToDelete.value = null;
-};
-
-const formatDate = (dateString: string) => {
-	return new Date(dateString).toLocaleDateString("zh-CN");
-};
-
-// 组件挂载时加载数据
-onMounted(() => {
-	loadTags();
-});
-</script>
 
 <style scoped>
 .tag-manage {
@@ -288,11 +452,21 @@ onMounted(() => {
 	padding: 20px;
 	border: 1px solid rgba(100, 255, 218, 0.1);
 	margin-bottom: 24px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.search-left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	width: 50%;
 }
 
 .search-box {
 	position: relative;
-	max-width: 400px;
+	flex: 1;
 }
 
 .search-input {
@@ -325,23 +499,33 @@ onMounted(() => {
 	font-size: 14px;
 }
 
-/* 统计区域 */
-.stats-section {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-	gap: 16px;
-	margin-bottom: 24px;
+.reset-btn {
+	background: none;
+	border: none;
+	color: var(--text-secondary);
+	font-size: 14px;
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 4px;
+	transition: all 0.3s ease;
 }
 
-.stat-item {
-	background: rgba(26, 35, 50, 0.8);
-	border-radius: 12px;
-	padding: 20px;
-	border: 1px solid rgba(100, 255, 218, 0.1);
+.reset-btn:hover {
+	background: rgba(100, 255, 218, 0.1);
+	color: var(--accent);
+}
+
+.search-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.total-count {
 	text-align: center;
 }
 
-.stat-value {
+.count-value {
 	display: block;
 	font-size: 28px;
 	font-weight: 600;
@@ -349,10 +533,12 @@ onMounted(() => {
 	margin-bottom: 4px;
 }
 
-.stat-label {
+.count-label {
 	color: var(--text-secondary);
 	font-size: 14px;
 }
+
+
 
 /* 标签网格 */
 .tags-grid {
@@ -461,6 +647,96 @@ onMounted(() => {
 .empty-description {
 	font-size: 14px;
 	line-height: 1.5;
+}
+
+/* 加载状态 */
+.loading-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 60px 20px;
+	gap: 16px;
+}
+
+.loading-spinner {
+	width: 40px;
+	height: 40px;
+	border: 3px solid rgba(100, 255, 218, 0.1);
+	border-top: 3px solid var(--accent);
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+.loading-text {
+	color: var(--text-secondary);
+	font-size: 14px;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/* 分页组件 */
+.pagination-section {
+	margin-top: 32px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+}
+
+.pagination {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.page-btn {
+	padding: 8px 12px;
+	border: 1px solid rgba(100, 255, 218, 0.1);
+	background: var(--bg-tertiary);
+	color: var(--text-secondary);
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	font-size: 14px;
+	min-width: 40px;
+}
+
+.page-btn:hover:not(:disabled) {
+	background: rgba(100, 255, 218, 0.1);
+	color: var(--accent);
+	border-color: var(--accent);
+}
+
+.page-btn.active {
+	background: var(--accent);
+	color: var(--bg-primary);
+	border-color: var(--accent);
+}
+
+.page-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.page-numbers {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.page-ellipsis {
+	padding: 8px 12px;
+	color: var(--text-secondary);
+	font-size: 14px;
+}
+
+.pagination-info {
+	color: var(--text-secondary);
+	font-size: 14px;
 }
 
 /* 对话框样式 */
@@ -623,6 +899,13 @@ onMounted(() => {
 	margin-top: 8px;
 }
 
+.error-text {
+	color: #ff6b6b;
+	font-size: 14px;
+	margin-top: 8px;
+	font-weight: 500;
+}
+
 /* 动画 */
 @keyframes dialogAppear {
 	from {
@@ -656,8 +939,36 @@ onMounted(() => {
 		margin: 16px;
 	}
 
-	.stats-section {
-		grid-template-columns: 1fr;
+	.search-section {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 16px;
+	}
+
+	.search-left {
+		justify-content: center;
+	}
+
+	.search-right {
+		justify-content: center;
+	}
+
+
+
+	.pagination-section {
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.pagination {
+		flex-wrap: wrap;
+		justify-content: center;
+	}
+
+	.pagination-info {
+		font-size: 12px;
+		text-align: center;
 	}
 }
 </style>
