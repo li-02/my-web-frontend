@@ -268,8 +268,8 @@ const loadArticles = async () => {
 		}
 		
 		const response = await articleAPI.getArticles(params);
-		articles.value = response.data.content || response.data;
-		total.value = response.data.totalElements || response.data.length;
+		articles.value = response.data.data;
+		total.value = response.data.total || 0;	
 		
 		console.log("文章列表加载成功:", response.data);
 	} catch (error: any) {
