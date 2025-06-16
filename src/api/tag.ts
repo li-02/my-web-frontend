@@ -3,14 +3,13 @@ import api from "@/api/index.ts";
 
 export const tagAPI = {
 	// 获取所有标签（公开接口）
-	getTags: (params?: { page?: number; size?: number; keyword?: string }) => 
-		api.get("/tag/tags", { params }),
+	getTags: (params?: { page?: number; size?: number; keyword?: string }) => api.get("/tag/tags", { params }),
 
 	// 获取热门标签（按使用频率排序）
 	getPopularTags: (limit?: number) => api.get("/tag/popular", { params: { limit } }),
 
 	// 搜索标签（模糊搜索）
-	searchTags: (keyword: string) => api.get("/tag/search",  {params: {keyword} } ),
+	searchTags: (keyword: string) => api.get("/tag/search", { params: { keyword } }),
 
 	// 获取标签统计信息
 	getTagStats: () => api.get("/tag/stats"),

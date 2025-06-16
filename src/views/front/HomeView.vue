@@ -60,18 +60,18 @@ const loadArticles = async () => {
 		const response = await articleAPI.getArticles({
 			page: 0,
 			size: 6, // 首页只显示6篇最新文章作为预览
-			status: 'PUBLISHED' // 只显示已发布的文章
+			status: "PUBLISHED", // 只显示已发布的文章
 		});
-		
+
 		// 转换数据格式以兼容ArticleCard组件
 		const rawArticles = response.data.data.content || response.data.data;
 		articles.value = rawArticles.map((article: any) => ({
 			...article,
 			date: article.publishTime || article.createTime,
-			category: article.categoryName || '未分类',
-			excerpt: article.summary || article.content?.substring(0, 150) + '...' || '暂无摘要'
+			category: article.categoryName || "未分类",
+			excerpt: article.summary || article.content?.substring(0, 150) + "..." || "暂无摘要",
 		}));
-		
+
 		console.log("文章列表加载成功:", articles.value);
 	} catch (error: any) {
 		console.error("获取文章列表失败:", error);
@@ -94,7 +94,7 @@ const loadArticles = async () => {
 				isPinned: false,
 				isAllowComment: true,
 				isOriginal: true,
-				accessType: "PUBLIC"
+				accessType: "PUBLIC",
 			},
 			{
 				id: 2,
@@ -112,7 +112,7 @@ const loadArticles = async () => {
 				isPinned: false,
 				isAllowComment: true,
 				isOriginal: true,
-				accessType: "PUBLIC"
+				accessType: "PUBLIC",
 			},
 			{
 				id: 3,
@@ -130,7 +130,7 @@ const loadArticles = async () => {
 				isPinned: false,
 				isAllowComment: true,
 				isOriginal: true,
-				accessType: "PUBLIC"
+				accessType: "PUBLIC",
 			},
 			{
 				id: 4,
@@ -148,8 +148,8 @@ const loadArticles = async () => {
 				isPinned: false,
 				isAllowComment: true,
 				isOriginal: true,
-				accessType: "PUBLIC"
-			}
+				accessType: "PUBLIC",
+			},
 		] as Article[];
 	} finally {
 		loading.value = false;
@@ -181,26 +181,26 @@ onMounted(() => {
 			<!-- 博客文章区域 -->
 			<section class="blog-section" id="blog">
 				<h2 class="section-title">最新文章</h2>
-				
+
 				<!-- 加载状态 -->
 				<div v-if="loading" class="loading-state">
 					<div class="loading-spinner">⏳</div>
 					<div class="loading-text">正在加载文章...</div>
 				</div>
-				
+
 				<!-- 空状态 -->
 				<div v-else-if="articles.length === 0" class="empty-state">
 					<div class="empty-icon">📝</div>
 					<div class="empty-title">暂无文章</div>
 					<div class="empty-description">还没有发布任何文章，敬请期待！</div>
 				</div>
-				
+
 				<!-- 文章列表 -->
 				<div v-else>
 					<div class="articles-grid">
 						<ArticleCard v-for="article in articles" :key="article.id" :article="article" />
 					</div>
-					
+
 					<!-- 查看更多按钮 -->
 					<div class="view-more-section">
 						<router-link to="/articles" class="view-more-btn">
@@ -226,8 +226,6 @@ onMounted(() => {
 		</div>
 	</div>
 </template>
-
-
 
 <style scoped>
 /* 主页面 */

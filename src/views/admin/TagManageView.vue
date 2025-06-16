@@ -58,7 +58,7 @@ const getPageNumbers = computed(() => {
 	const pages: number[] = [];
 	const total = totalPages.value;
 	const current = currentPage.value;
-	
+
 	if (total <= 7) {
 		// 总页数小于等于7，显示所有页码
 		for (let i = 1; i <= total; i++) {
@@ -91,7 +91,7 @@ const getPageNumbers = computed(() => {
 			pages.push(total);
 		}
 	}
-	
+
 	return pages;
 });
 
@@ -102,9 +102,9 @@ const loadTags = async (page = currentPage.value, size = pageSize.value, keyword
 		const params = {
 			page: page - 1, // 后端通常从0开始计数
 			size,
-			keyword: keyword || undefined
+			keyword: keyword || undefined,
 		};
-		
+
 		const response = await tagAPI.getTags(params);
 		tags.value = response.data.data;
 		totalTags.value = response.data.total || 0;
@@ -129,12 +129,12 @@ const editTag = (tag: Tag) => {
 const confirmDelete = (tag: Tag) => {
 	tagToDelete.value = tag;
 	deleteError.value = "";
-	
+
 	// 检查标签是否有关联文章
 	if (tag.usageCount > 0) {
 		deleteError.value = `该标签关联了 ${tag.usageCount} 篇文章，无法删除。请先移除相关文章中的该标签后再删除。`;
 	}
-	
+
 	showDeleteDialog.value = true;
 };
 
@@ -170,7 +170,7 @@ const deleteTag = async () => {
 				deleteError.value = `该标签关联了 ${tagToDelete.value.usageCount} 篇文章，无法删除。请先移除相关文章中的该标签后再删除。`;
 				return;
 			}
-			
+
 			await tagAPI.deleteTag(tagToDelete.value.id);
 			// 重新加载标签列表以获取最新数据
 			await loadTags();
@@ -251,14 +251,7 @@ onMounted(() => {
 		<div class="search-section">
 			<div class="search-left">
 				<div class="search-box">
-					<input 
-						v-model="searchKeyword" 
-						type="text" 
-						placeholder="搜索标签名称..." 
-						class="search-input" 
-						@input="onSearchInput"
-						@keyup.enter="handleSearch"
-					/>
+					<input v-model="searchKeyword" type="text" placeholder="搜索标签名称..." class="search-input" @input="onSearchInput" @keyup.enter="handleSearch" />
 					<span class="search-icon">🔍</span>
 				</div>
 				<button class="reset-btn" @click="resetSearch" title="重置搜索">
@@ -306,46 +299,27 @@ onMounted(() => {
 			<div class="empty-icon">🏷️</div>
 			<div class="empty-title">暂无标签</div>
 			<div class="empty-description">
-				{{ searchKeyword ? '没有找到相关标签，请尝试其他关键词' : '还没有创建任何标签，点击上方按钮创建第一个标签吧！' }}
+				{{ searchKeyword ? "没有找到相关标签，请尝试其他关键词" : "还没有创建任何标签，点击上方按钮创建第一个标签吧！" }}
 			</div>
 		</div>
 
 		<!-- 分页组件 -->
 		<div v-if="!loading && totalPages > 1" class="pagination-section">
-			<div class="pagination-info">
-				第 {{ currentPage }} 页，共 {{ totalPages }} 页，总共 {{ totalTags }} 条记录
-			</div>
-			
+			<div class="pagination-info">第 {{ currentPage }} 页，共 {{ totalPages }} 页，总共 {{ totalTags }} 条记录</div>
+
 			<div class="pagination">
-				<button 
-					class="page-btn" 
-					:disabled="!hasPrevPage" 
-					@click="changePage(currentPage - 1)"
-				>
-					上一页
-				</button>
-				
+				<button class="page-btn" :disabled="!hasPrevPage" @click="changePage(currentPage - 1)">上一页</button>
+
 				<div class="page-numbers">
 					<template v-for="page in getPageNumbers" :key="page">
 						<span v-if="page === -1" class="page-ellipsis">...</span>
-						<button 
-							v-else
-							class="page-btn" 
-							:class="{ active: page === currentPage }"
-							@click="changePage(page)"
-						>
+						<button v-else class="page-btn" :class="{ active: page === currentPage }" @click="changePage(page)">
 							{{ page }}
 						</button>
 					</template>
 				</div>
-				
-				<button 
-					class="page-btn" 
-					:disabled="!hasNextPage" 
-					@click="changePage(currentPage + 1)"
-				>
-					下一页
-				</button>
+
+				<button class="page-btn" :disabled="!hasNextPage" @click="changePage(currentPage + 1)">下一页</button>
 			</div>
 		</div>
 
@@ -388,13 +362,7 @@ onMounted(() => {
 				</div>
 				<div class="dialog-footer">
 					<button class="btn btn-secondary" @click="closeDeleteDialog">取消</button>
-					<button 
-						class="btn btn-danger" 
-						@click="deleteTag" 
-						:disabled="!!deleteError"
-					>
-						确定删除
-					</button>
+					<button class="btn btn-danger" @click="deleteTag" :disabled="!!deleteError">确定删除</button>
 				</div>
 			</div>
 		</div>
@@ -538,8 +506,6 @@ onMounted(() => {
 	font-size: 14px;
 }
 
-
-
 /* 标签网格 */
 .tags-grid {
 	display: grid;
@@ -674,8 +640,12 @@ onMounted(() => {
 }
 
 @keyframes spin {
-	0% { transform: rotate(0deg); }
-	100% { transform: rotate(360deg); }
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
 }
 
 /* 分页组件 */
@@ -952,8 +922,6 @@ onMounted(() => {
 	.search-right {
 		justify-content: center;
 	}
-
-
 
 	.pagination-section {
 		flex-direction: column;

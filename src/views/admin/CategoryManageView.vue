@@ -47,7 +47,7 @@ const loadCategories = async () => {
 		loading.value = true;
 		const params = getQueryParams();
 		const response = await categoryAPI.getCategoriesList(params);
-		
+
 		if (response.code === 200) {
 			categories.value = response.data.data;
 			filteredCategories.value = response.data.data;
@@ -55,15 +55,15 @@ const loadCategories = async () => {
 			totalPages.value = response.data.totalPages;
 			// 后端返回的page是从0开始的，转换为前端的页码（从1开始）
 			currentPage.value = response.data.page + 1;
-			
-			console.log('分类列表加载成功:', response.data);
-			console.log('前端页码:', currentPage.value, '后端页码:', response.data.page);
+
+			console.log("分类列表加载成功:", response.data);
+			console.log("前端页码:", currentPage.value, "后端页码:", response.data.page);
 		} else {
-			ElMessage.error(response.message || '获取分类列表失败');
+			ElMessage.error(response.message || "获取分类列表失败");
 		}
 	} catch (error: any) {
-		console.error('获取分类列表失败:', error);
-		ElMessage.error(error.response?.data?.message || '获取分类列表失败，请重试');
+		console.error("获取分类列表失败:", error);
+		ElMessage.error(error.response?.data?.message || "获取分类列表失败，请重试");
 	} finally {
 		loading.value = false;
 	}
@@ -152,7 +152,7 @@ const saveCategory = async () => {
 			// 编辑分类
 			console.log("更新分类:", editingCategory.value);
 			await categoryAPI.updateCategory(editingCategory.value.id, formData.value.name.trim(), formData.value.description.trim());
-			
+
 			// 更新本地数据
 			const index = categories.value.findIndex((cat) => cat.id === editingCategory.value!.id);
 			if (index > -1) {
@@ -168,25 +168,25 @@ const saveCategory = async () => {
 					filteredCategories.value[filteredIndex] = categories.value[index];
 				}
 			}
-			
-			ElMessage.success('分类更新成功');
+
+			ElMessage.success("分类更新成功");
 		} else {
-			// 新增分类 
+			// 新增分类
 			console.log("新增分类");
 			await categoryAPI.createCategory({
 				name: formData.value.name.trim(),
-				description: formData.value.description.trim()
+				description: formData.value.description.trim(),
 			});
-			
+
 			// 重新加载分类列表以获取最新数据
 			await loadCategories();
-			ElMessage.success('分类创建成功');
+			ElMessage.success("分类创建成功");
 		}
-		
+
 		closeModal();
 	} catch (error: any) {
-		console.error('保存分类失败:', error);
-		ElMessage.error(error.response?.data?.message || '保存分类失败，请重试');
+		console.error("保存分类失败:", error);
+		ElMessage.error(error.response?.data?.message || "保存分类失败，请重试");
 	}
 };
 
@@ -194,40 +194,32 @@ const saveCategory = async () => {
 const deleteCategory = async (category: Category) => {
 	const articleCount = category.articleCount || 0;
 	if (articleCount > 0) {
-		ElMessageBox.alert(
-			`该分类下还有 ${articleCount} 篇文章，无法删除`,
-			'无法删除',
-			{
-				confirmButtonText: '知道了',
-				type: 'warning',
-				customClass: 'custom-message-box',
-			}
-		);
+		ElMessageBox.alert(`该分类下还有 ${articleCount} 篇文章，无法删除`, "无法删除", {
+			confirmButtonText: "知道了",
+			type: "warning",
+			customClass: "custom-message-box",
+		});
 		return;
 	}
 
 	try {
-		await ElMessageBox.confirm(
-			`确定要删除分类"${category.name}"吗？此操作不可恢复。`,
-			'删除确认',
-			{
-				confirmButtonText: '确定删除',
-				cancelButtonText: '取消',
-				type: 'warning',
-				customClass: 'custom-message-box',
-				confirmButtonClass: 'custom-confirm-btn',
-				cancelButtonClass: 'custom-cancel-btn',
-			}
-		);
-		
+		await ElMessageBox.confirm(`确定要删除分类"${category.name}"吗？此操作不可恢复。`, "删除确认", {
+			confirmButtonText: "确定删除",
+			cancelButtonText: "取消",
+			type: "warning",
+			customClass: "custom-message-box",
+			confirmButtonClass: "custom-confirm-btn",
+			cancelButtonClass: "custom-cancel-btn",
+		});
+
 		await categoryAPI.deleteCategory(category.id);
 		// 重新加载分类列表
 		await loadCategories();
-		ElMessage.success('分类删除成功');
+		ElMessage.success("分类删除成功");
 	} catch (error: any) {
-		if (error !== 'cancel') {
-			console.error('删除分类失败:', error);
-			ElMessage.error(error.response?.data?.message || '删除分类失败，请重试');
+		if (error !== "cancel") {
+			console.error("删除分类失败:", error);
+			ElMessage.error(error.response?.data?.message || "删除分类失败，请重试");
 		}
 	}
 };
@@ -326,7 +318,14 @@ onMounted(() => {
 
 				<div class="category-actions">
 					<button class="action-btn edit" @click="openEditModal(category)" title="编辑">✏️</button>
-					<button class="action-btn delete" @click="deleteCategory(category)" :disabled="(category.articleCount || 0) > 0" :title="(category.articleCount || 0) > 0 ? '该分类下有文章，无法删除' : '删除'">🗑️</button>
+					<button
+						class="action-btn delete"
+						@click="deleteCategory(category)"
+						:disabled="(category.articleCount || 0) > 0"
+						:title="(category.articleCount || 0) > 0 ? '该分类下有文章，无法删除' : '删除'"
+					>
+						🗑️
+					</button>
 				</div>
 			</div>
 		</div>
@@ -1026,7 +1025,8 @@ onMounted(() => {
 }
 
 @keyframes pulse {
-	0%, 100% {
+	0%,
+	100% {
 		opacity: 0.7;
 	}
 	50% {

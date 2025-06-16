@@ -72,11 +72,11 @@ const visiblePages = computed(() => {
 	const pages = [];
 	const start = Math.max(1, currentPage.value - 2);
 	const end = Math.min(totalPages.value, currentPage.value + 3);
-	
+
 	for (let i = start; i <= end; i++) {
 		pages.push(i);
 	}
-	
+
 	return pages;
 });
 
@@ -97,9 +97,9 @@ const loadArticles = async () => {
 		const params: any = {
 			page: currentPage.value,
 			size: pageSize.value,
-			status: 'PUBLISHED'
+			status: "PUBLISHED",
 		};
-		
+
 		// 添加搜索和筛选条件
 		if (searchKeyword.value.trim()) {
 			params.keyword = searchKeyword.value.trim();
@@ -107,17 +107,17 @@ const loadArticles = async () => {
 		if (selectedCategory.value) {
 			params.categoryId = selectedCategory.value;
 		}
-		
+
 		const response = await articleAPI.getArticles(params);
-		
+
 		// 处理分页数据
 		if (response.data.data.content) {
 			// 分页响应格式
 			articles.value = response.data.data.content.map((article: any) => ({
 				...article,
 				date: article.publishTime || article.createTime,
-				category: article.categoryName || '未分类',
-				excerpt: article.summary || article.content?.substring(0, 150) + '...' || '暂无摘要'
+				category: article.categoryName || "未分类",
+				excerpt: article.summary || article.content?.substring(0, 150) + "..." || "暂无摘要",
 			}));
 			totalElements.value = response.data.data.totalElements;
 			totalPages.value = response.data.data.totalPages;
@@ -126,13 +126,13 @@ const loadArticles = async () => {
 			articles.value = response.data.data.map((article: any) => ({
 				...article,
 				date: article.publishTime || article.createTime,
-				category: article.categoryName || '未分类',
-				excerpt: article.summary || article.content?.substring(0, 150) + '...' || '暂无摘要'
+				category: article.categoryName || "未分类",
+				excerpt: article.summary || article.content?.substring(0, 150) + "..." || "暂无摘要",
 			}));
 			totalElements.value = response.data.data.length;
 			totalPages.value = Math.ceil(response.data.data.length / pageSize.value);
 		}
-		
+
 		console.log("文章列表加载成功:", articles.value);
 	} catch (error: any) {
 		console.error("获取文章列表失败:", error);
@@ -160,17 +160,19 @@ const changePage = (page: number) => {
 	currentPage.value = page;
 	loadArticles();
 	// 滚动到页面顶部
-	window.scrollTo({ top: 0, behavior: 'smooth' });
+	window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 // 格式化日期
 const formatDate = (dateString: string) => {
 	const date = new Date(dateString);
-	return date.toLocaleDateString('zh-CN', {
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit'
-	}).replace(/\//g, '-');
+	return date
+		.toLocaleDateString("zh-CN", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		})
+		.replace(/\//g, "-");
 };
 
 // 阅读文章 - 跳转到文章详情页
@@ -202,10 +204,7 @@ watch(searchKeyword, (newValue, oldValue) => {
 // 组件挂载时初始化
 onMounted(async () => {
 	console.log("ArticleListView mounted, DynamicBackground should be visible");
-	await Promise.all([
-		loadCategories(),
-		loadArticles()
-	]);
+	await Promise.all([loadCategories(), loadArticles()]);
 });
 </script>
 
@@ -213,7 +212,7 @@ onMounted(async () => {
 	<div class="article-list-page">
 		<!-- 导航栏 -->
 		<NavBar />
-		
+
 		<!-- 页面头部 -->
 		<!-- <div class="page-header">
 			<div class="header-content">
@@ -226,13 +225,7 @@ onMounted(async () => {
 		<div class="filter-section">
 			<div class="filter-container">
 				<div class="search-box">
-					<input 
-						v-model="searchKeyword" 
-						type="text" 
-						placeholder="搜索文章标题..." 
-						class="search-input"
-						@keyup.enter="searchArticles"
-					/>
+					<input v-model="searchKeyword" type="text" placeholder="搜索文章标题..." class="search-input" @keyup.enter="searchArticles" />
 					<button class="search-btn" @click="searchArticles">🔍</button>
 				</div>
 
@@ -260,22 +253,17 @@ onMounted(async () => {
 			<div v-else-if="articles.length === 0" class="empty-state">
 				<div class="empty-icon">📝</div>
 				<div class="empty-title">
-					{{ searchKeyword || selectedCategory ? '没有找到匹配的文章' : '暂无文章' }}
+					{{ searchKeyword || selectedCategory ? "没有找到匹配的文章" : "暂无文章" }}
 				</div>
 				<div class="empty-description">
-					{{ searchKeyword || selectedCategory ? '尝试调整搜索条件或筛选器' : '还没有发布任何文章，敬请期待！' }}
+					{{ searchKeyword || selectedCategory ? "尝试调整搜索条件或筛选器" : "还没有发布任何文章，敬请期待！" }}
 				</div>
 			</div>
 
 			<!-- 文章列表 -->
 			<div v-else>
 				<div class="articles-list">
-					<article 
-						v-for="article in articles" 
-						:key="article.id" 
-						class="article-item"
-						@click="readArticle(article.id)"
-					>
+					<article v-for="article in articles" :key="article.id" class="article-item" @click="readArticle(article.id)">
 						<!-- 封面图片 -->
 						<div v-if="article.coverImage" class="article-cover" @click="previewImage(article.coverImage, $event)">
 							<img :src="article.coverImage" :alt="article.title" />
@@ -283,7 +271,7 @@ onMounted(async () => {
 								<span class="preview-icon">🔍</span>
 							</div>
 						</div>
-						
+
 						<!-- 文章内容 -->
 						<div class="article-content">
 							<div class="article-meta">
@@ -295,11 +283,11 @@ onMounted(async () => {
 								<span v-if="article.isPinned" class="pin-badge">📌 置顶</span>
 								<span v-if="article.isOriginal" class="original-badge">原创</span>
 							</div>
-							
+
 							<h2 class="article-title">{{ article.title }}</h2>
-							
+
 							<p class="article-excerpt">{{ article.excerpt }}</p>
-							
+
 							<div class="article-stats">
 								<span class="stat-item">👁️ {{ article.viewCount }}</span>
 								<!-- <span class="stat-item">❤️ {{ article.likeCount }}</span>
@@ -313,37 +301,17 @@ onMounted(async () => {
 
 				<!-- 分页组件 -->
 				<div v-if="totalPages > 1" class="pagination">
-					<div class="pagination-info">
-						共 {{ totalElements }} 篇文章，第 {{ currentPage + 1 }} / {{ totalPages }} 页
-					</div>
+					<div class="pagination-info">共 {{ totalElements }} 篇文章，第 {{ currentPage + 1 }} / {{ totalPages }} 页</div>
 					<div class="pagination-controls">
-						<button 
-							class="page-btn" 
-							:disabled="currentPage === 0" 
-							@click="changePage(currentPage - 1)"
-						>
-							上一页
-						</button>
-						
+						<button class="page-btn" :disabled="currentPage === 0" @click="changePage(currentPage - 1)">上一页</button>
+
 						<div class="page-numbers">
-							<button 
-								v-for="page in visiblePages" 
-								:key="page" 
-								class="page-number" 
-								:class="{ active: page - 1 === currentPage }" 
-								@click="changePage(page - 1)"
-							>
+							<button v-for="page in visiblePages" :key="page" class="page-number" :class="{ active: page - 1 === currentPage }" @click="changePage(page - 1)">
 								{{ page }}
 							</button>
 						</div>
-						
-						<button 
-							class="page-btn" 
-							:disabled="currentPage === totalPages - 1" 
-							@click="changePage(currentPage + 1)"
-						>
-							下一页
-						</button>
+
+						<button class="page-btn" :disabled="currentPage === totalPages - 1" @click="changePage(currentPage + 1)">下一页</button>
 					</div>
 				</div>
 			</div>
@@ -694,8 +662,12 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-	from { transform: rotate(0deg); }
-	to { transform: rotate(360deg); }
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 /* 空状态 */
@@ -886,40 +858,40 @@ onMounted(async () => {
 	.page-title {
 		font-size: 2rem;
 	}
-	
+
 	.filter-container {
 		flex-direction: column;
 		gap: 1rem;
 	}
-	
+
 	.search-box {
 		max-width: none;
 	}
-	
+
 	.article-item {
 		flex-direction: column;
 		padding: 1rem;
 	}
-	
+
 	.article-cover {
 		width: 100%;
 		height: 200px;
 		margin-right: 0;
 		margin-bottom: 1rem;
 	}
-	
+
 	.article-title {
 		font-size: 1.25rem;
 	}
-	
+
 	.article-meta {
 		gap: 0.5rem;
 	}
-	
+
 	.article-stats {
 		gap: 0.75rem;
 	}
-	
+
 	.pagination-controls {
 		flex-wrap: wrap;
 		justify-content: center;
@@ -943,4 +915,4 @@ onMounted(async () => {
 		max-height: 100%;
 	}
 }
-</style> 
+</style>

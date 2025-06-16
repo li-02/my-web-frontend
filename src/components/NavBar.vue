@@ -4,18 +4,10 @@
 			<router-link to="/" class="logo">我的博客</router-link>
 			<ul class="nav-links">
 				<li v-for="(item, index) in navItems" :key="index">
-					<a 
-						v-if="item.id === 'articles'" 
-						href="/articles" 
-						@click="navigateToBlog"
-					>
+					<a v-if="item.id === 'articles'" href="/articles" @click="navigateToBlog">
 						{{ item.name }}
 					</a>
-					<a 
-						v-else 
-						:href="`#${item.id}`" 
-						@click="smoothScroll"
-					>
+					<a v-else :href="`#${item.id}`" @click="smoothScroll">
 						{{ item.name }}
 					</a>
 				</li>
@@ -163,4 +155,4 @@ onUnmounted(() => {
 		display: none;
 	}
 }
-</style> 
+</style>

@@ -5,9 +5,8 @@ import NavBar from "@/components/NavBar.vue";
 
 import { articleAPI } from "@/api/article.ts";
 import { ElMessage } from "element-plus";
-import { MdPreview } from 'md-editor-v3';
-import 'md-editor-v3/lib/style.css';
-
+import { MdPreview } from "md-editor-v3";
+import "md-editor-v3/lib/style.css";
 
 // 文章接口定义
 interface Article {
@@ -53,7 +52,7 @@ const relatedArticles = ref<Article[]>([]);
 const loading = ref(false);
 const isLiked = ref(false);
 const outline = ref<OutlineItem[]>([]);
-const activeOutlineId = ref<string>('');
+const activeOutlineId = ref<string>("");
 const showOutline = ref(false);
 const isOutlineCollapsed = ref(false);
 
@@ -61,26 +60,26 @@ const isOutlineCollapsed = ref(false);
 const incrementViewCount = async (articleId: string) => {
 	try {
 		// 从localStorage检查是否已经浏览过这篇文章（防止重复计数）
-		const viewedArticles = JSON.parse(localStorage.getItem('viewedArticles') || '[]');
+		const viewedArticles = JSON.parse(localStorage.getItem("viewedArticles") || "[]");
 		const articleKey = `article_${articleId}`;
-		
+
 		// 检查是否在1小时内已经浏览过（防止刷新页面重复计数）
 		const now = Date.now();
 		const oneHour = 60 * 60 * 1000;
 		const lastViewed = localStorage.getItem(articleKey);
-		
-		if (!lastViewed || (now - parseInt(lastViewed)) > oneHour) {
+
+		if (!lastViewed || now - parseInt(lastViewed) > oneHour) {
 			// 调用API增加浏览次数
 			await articleAPI.incrementViewCount(articleId);
-			
+
 			// 记录浏览时间
 			localStorage.setItem(articleKey, now.toString());
-			
+
 			// 如果文章已加载，立即更新本地浏览次数
 			if (article.value) {
 				article.value.viewCount++;
 			}
-			
+
 			console.log("浏览次数已增加");
 		} else {
 			console.log("1小时内已浏览过，不重复计数");
@@ -93,10 +92,10 @@ const incrementViewCount = async (articleId: string) => {
 
 // 解析文章大纲
 const parseOutline = (content: string) => {
-	const lines = content.split('\n');
+	const lines = content.split("\n");
 	const outlineItems: OutlineItem[] = [];
 	let headingCounter = 0;
-	
+
 	lines.forEach((line) => {
 		const match = line.match(/^(#{1,6})\s+(.+)/);
 		if (match) {
@@ -104,15 +103,15 @@ const parseOutline = (content: string) => {
 			const level = match[1].length;
 			const title = match[2].trim();
 			const id = `heading-${headingCounter}`;
-			
+
 			outlineItems.push({
 				id,
 				title,
-				level
+				level,
 			});
 		}
 	});
-	
+
 	return outlineItems;
 };
 
@@ -122,9 +121,9 @@ const addHeadingIds = async () => {
 	// 多次尝试获取预览元素，等待Markdown完全渲染
 	let attempts = 0;
 	const maxAttempts = 10;
-	
+
 	const tryAddIds = () => {
-		const previewElement = document.querySelector('.markdown-content .md-editor-preview');
+		const previewElement = document.querySelector(".markdown-content .md-editor-preview");
 		if (!previewElement) {
 			attempts++;
 			if (attempts < maxAttempts) {
@@ -132,8 +131,8 @@ const addHeadingIds = async () => {
 			}
 			return;
 		}
-		
-		const headings = previewElement.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+		const headings = previewElement.querySelectorAll("h1, h2, h3, h4, h5, h6");
 		if (headings.length === 0) {
 			attempts++;
 			if (attempts < maxAttempts) {
@@ -141,17 +140,17 @@ const addHeadingIds = async () => {
 			}
 			return;
 		}
-		
+
 		let headingCounter = 0;
 		headings.forEach((heading) => {
 			headingCounter++;
 			const id = `heading-${headingCounter}`;
 			heading.id = id;
 		});
-		
+
 		console.log(`成功为 ${headings.length} 个标题添加了ID`);
 	};
-	
+
 	tryAddIds();
 };
 
@@ -162,7 +161,7 @@ const scrollToHeading = (id: string) => {
 		const offsetTop = element.offsetTop - 100; // 减去导航栏高度
 		window.scrollTo({
 			top: offsetTop,
-			behavior: 'smooth'
+			behavior: "smooth",
 		});
 		activeOutlineId.value = id;
 	}
@@ -170,16 +169,17 @@ const scrollToHeading = (id: string) => {
 
 // 监听滚动，更新当前激活的大纲项
 const handleScroll = () => {
-	const headings = document.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
-	let currentId = '';
-	
+	const headings = document.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
+	let currentId = "";
+
 	headings.forEach((heading) => {
 		const rect = heading.getBoundingClientRect();
-		if (rect.top <= 150) { // 考虑导航栏高度
+		if (rect.top <= 150) {
+			// 考虑导航栏高度
 			currentId = heading.id;
 		}
 	});
-	
+
 	if (currentId) {
 		activeOutlineId.value = currentId;
 	}
@@ -191,25 +191,25 @@ const loadArticle = async (articleId: string) => {
 		loading.value = true;
 		const response = await articleAPI.getArticle(articleId);
 		article.value = response.data;
-		
+
 		// 解析文章大纲
 		if (article.value?.content) {
 			outline.value = parseOutline(article.value.content);
 			showOutline.value = outline.value.length > 0;
 		}
-		
+
 		// 调试：打印文章内容，检查代码块格式
 		console.log("文章内容:", article.value?.content);
-		
+
 		// 文章加载成功后增加浏览次数
 		await incrementViewCount(articleId);
-		
+
 		// 加载相关文章
 		await loadRelatedArticles();
-		
+
 		// 给标题添加ID
 		await addHeadingIds();
-		
+
 		console.log("文章详情加载成功:", article.value);
 		console.log("文章大纲:", outline.value);
 	} catch (error: any) {
@@ -224,22 +224,19 @@ const loadArticle = async (articleId: string) => {
 // 加载相关文章
 const loadRelatedArticles = async () => {
 	if (!article.value) return;
-	
+
 	try {
 		// 根据分类获取相关文章
 		const response = await articleAPI.getArticles({
 			page: 0,
 			size: 3,
-			status: 'PUBLISHED',
-			categoryId: article.value.categoryId
+			status: "PUBLISHED",
+			categoryId: article.value.categoryId,
 		});
-		
+
 		// 过滤掉当前文章
 		const articles = response.data.content || response.data;
-		relatedArticles.value = articles
-			.filter((item: any) => item.id !== article.value!.id)
-			.slice(0, 3);
-			
+		relatedArticles.value = articles.filter((item: any) => item.id !== article.value!.id).slice(0, 3);
 	} catch (error: any) {
 		console.error("获取相关文章失败:", error);
 	}
@@ -248,21 +245,21 @@ const loadRelatedArticles = async () => {
 // 格式化日期
 const formatDate = (dateString: string) => {
 	const date = new Date(dateString);
-	return date.toLocaleDateString('zh-CN', {
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric'
+	return date.toLocaleDateString("zh-CN", {
+		year: "numeric",
+		month: "long",
+		day: "numeric",
 	});
 };
 
 // 切换点赞状态
 const toggleLike = async () => {
 	if (!article.value) return;
-	
+
 	try {
 		// 这里应该调用点赞API
 		// await articleAPI.toggleLike(article.value.id);
-		
+
 		isLiked.value = !isLiked.value;
 		if (isLiked.value) {
 			article.value.likeCount++;
@@ -280,7 +277,7 @@ const toggleLike = async () => {
 // 分享文章
 const shareArticle = async () => {
 	if (!article.value) return;
-	
+
 	try {
 		const url = window.location.href;
 		await navigator.clipboard.writeText(url);
@@ -304,14 +301,14 @@ onMounted(() => {
 	} else {
 		router.push("/articles");
 	}
-	
+
 	// 添加滚动监听
-	window.addEventListener('scroll', handleScroll);
+	window.addEventListener("scroll", handleScroll);
 });
 
 // 组件卸载时移除监听
 onUnmounted(() => {
-	window.removeEventListener('scroll', handleScroll);
+	window.removeEventListener("scroll", handleScroll);
 });
 </script>
 
@@ -319,13 +316,13 @@ onUnmounted(() => {
 	<div class="article-detail-page">
 		<!-- 导航栏 -->
 		<NavBar />
-		
+
 		<!-- 加载状态 -->
 		<div v-if="loading" class="loading-state">
 			<div class="loading-spinner">⏳</div>
 			<div class="loading-text">正在加载文章...</div>
 		</div>
-		
+
 		<!-- 文章未找到 -->
 		<div v-else-if="!article" class="not-found-state">
 			<div class="not-found-icon">😕</div>
@@ -333,7 +330,7 @@ onUnmounted(() => {
 			<div class="not-found-description">抱歉，您访问的文章不存在或已被删除</div>
 			<router-link to="/articles" class="back-btn">返回文章列表</router-link>
 		</div>
-		
+
 		<!-- 文章内容 -->
 		<div v-else class="article-detail">
 			<!-- 文章头部 -->
@@ -347,28 +344,27 @@ onUnmounted(() => {
 						<span class="breadcrumb-separator">></span>
 						<span class="breadcrumb-current">{{ article.title }}</span>
 					</nav>
-					
+
 					<!-- 文章元信息 -->
 					<div class="article-meta">
 						<span class="article-date">📅 {{ formatDate(article.publishTime || article.createTime) }}</span>
 						<span v-if="article.isOriginal" class="original-badge">原创</span>
 						<div class="category-tags-group">
-							<span class="article-category">{{ article.categoryName || '未分类' }}</span>
+							<span class="article-category">{{ article.categoryName || "未分类" }}</span>
 							<!-- 文章标签 -->
 							<div v-if="article.tags && article.tags.length > 0" class="article-tags-inline">
 								<span v-for="tag in article.tags" :key="tag" class="tag-inline">{{ tag }}</span>
 							</div>
 						</div>
 						<span v-if="article.isPinned" class="pin-badge">📌 置顶</span>
-
 					</div>
-					
+
 					<!-- 文章标题 -->
 					<h1 class="article-title">{{ article.title }}</h1>
-					
+
 					<!-- 文章摘要 -->
 					<!-- <p v-if="article.summary" class="article-summary">{{ article.summary }}</p> -->
-					
+
 					<!-- 文章统计 -->
 					<div class="article-stats">
 						<span class="stat-item">👁️ {{ article.viewCount }} 浏览</span>
@@ -379,66 +375,50 @@ onUnmounted(() => {
 					</div>
 				</div>
 			</header>
-			
+
 			<!-- 封面图片 -->
 			<div v-if="article.coverImage" class="article-cover">
 				<img :src="article.coverImage" :alt="article.title" />
 			</div>
-			
+
 			<!-- 文章正文 -->
 			<main class="article-content">
 				<div class="content-container">
 					<!-- 文章大纲 -->
-					<aside v-if="showOutline" class="article-outline" :class="{ 'collapsed': isOutlineCollapsed }">
+					<aside v-if="showOutline" class="article-outline" :class="{ collapsed: isOutlineCollapsed }">
 						<div class="outline-header">
 							<h3 class="outline-title">📑 文章目录</h3>
-							<button 
-								class="outline-toggle" 
-								@click="toggleOutline"
-								:title="isOutlineCollapsed ? '展开目录' : '折叠目录'"
-							>
-								{{ isOutlineCollapsed ? '📄' : '📋' }}
+							<button class="outline-toggle" @click="toggleOutline" :title="isOutlineCollapsed ? '展开目录' : '折叠目录'">
+								{{ isOutlineCollapsed ? "📄" : "📋" }}
 							</button>
 						</div>
 						<nav class="outline-nav" v-show="!isOutlineCollapsed">
 							<ul class="outline-list">
-								<li 
-									v-for="item in outline" 
+								<li
+									v-for="item in outline"
 									:key="item.id"
 									class="outline-item"
 									:class="{
-										'active': activeOutlineId === item.id,
-										[`level-${item.level}`]: true
+										active: activeOutlineId === item.id,
+										[`level-${item.level}`]: true,
 									}"
 								>
-									<a 
-										:href="`#${item.id}`"
-										@click.prevent="scrollToHeading(item.id)"
-										class="outline-link"
-									>
+									<a :href="`#${item.id}`" @click.prevent="scrollToHeading(item.id)" class="outline-link">
 										{{ item.title }}
 									</a>
 								</li>
 							</ul>
 						</nav>
 					</aside>
-					
+
 					<!-- 文章内容 -->
 					<div class="content-wrapper" :class="{ 'with-outline': showOutline }">
 						<!-- Markdown 内容渲染 -->
-						<MdPreview 
-							:modelValue="article.content" 
-							theme="dark"
-							previewTheme="github"
-							codeTheme="github"
-							:showCodeRowNumber="false"
-							:tabSize="4"
-							class="markdown-content custom-md-theme"
-						/>
+						<MdPreview :modelValue="article.content" theme="dark" previewTheme="github" codeTheme="github" :showCodeRowNumber="false" :tabSize="4" class="markdown-content custom-md-theme" />
 					</div>
 				</div>
 			</main>
-			
+
 			<!-- 文章底部 -->
 			<footer class="article-footer">
 				<div class="footer-content">
@@ -453,17 +433,12 @@ onUnmounted(() => {
 							<span>分享</span>
 						</button>
 					</div>
-					
+
 					<!-- 相关文章推荐 -->
 					<div v-if="relatedArticles.length > 0" class="related-articles">
 						<h3 class="related-title">相关文章</h3>
 						<div class="related-list">
-							<router-link 
-								v-for="related in relatedArticles" 
-								:key="related.id"
-								:to="`/article/${related.id}`"
-								class="related-item"
-							>
+							<router-link v-for="related in relatedArticles" :key="related.id" :to="`/article/${related.id}`" class="related-item">
 								<div v-if="related.coverImage" class="related-cover">
 									<img :src="related.coverImage" :alt="related.title" />
 								</div>
@@ -475,7 +450,7 @@ onUnmounted(() => {
 							</router-link>
 						</div>
 					</div>
-					
+
 					<!-- 返回按钮 -->
 					<div class="back-to-list">
 						<router-link to="/articles" class="back-btn">
@@ -519,8 +494,12 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-	from { transform: rotate(0deg); }
-	to { transform: rotate(360deg); }
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 /* 未找到状态 */
@@ -718,8 +697,6 @@ onUnmounted(() => {
 	align-items: center;
 	gap: 0.25rem;
 }
-
-
 
 /* 封面图片 */
 .article-cover {
@@ -959,7 +936,7 @@ onUnmounted(() => {
 	color: var(--text-primary) !important;
 	padding: 0 !important;
 	white-space: pre !important;
-	font-family: 'Fira Code', 'Courier New', monospace !important;
+	font-family: "Fira Code", "Courier New", monospace !important;
 	font-size: 0.9rem !important;
 	line-height: 1.5 !important;
 }
@@ -1020,10 +997,8 @@ onUnmounted(() => {
 	color: var(--accent) !important;
 	padding: 0.2rem 0.4rem !important;
 	border-radius: 4px !important;
-	font-family: 'Courier New', monospace !important;
+	font-family: "Courier New", monospace !important;
 }
-
-
 
 .custom-md-theme :deep(.md-editor-preview blockquote) {
 	border-left: 4px solid var(--accent) !important;
@@ -1119,7 +1094,7 @@ onUnmounted(() => {
 	color: var(--accent) !important;
 	padding: 0.2rem 0.4rem !important;
 	border-radius: 4px !important;
-	font-family: 'Fira Code', 'Courier New', monospace !important;
+	font-family: "Fira Code", "Courier New", monospace !important;
 	white-space: nowrap !important;
 }
 
@@ -1295,7 +1270,7 @@ onUnmounted(() => {
 	.article-outline {
 		width: 240px;
 	}
-	
+
 	.content-container {
 		gap: 1.5rem;
 	}
@@ -1305,7 +1280,7 @@ onUnmounted(() => {
 	.content-container {
 		flex-direction: column;
 	}
-	
+
 	.article-outline {
 		position: relative;
 		top: auto;
@@ -1314,30 +1289,30 @@ onUnmounted(() => {
 		order: -1;
 		margin-bottom: 1rem;
 	}
-	
+
 	.article-outline.collapsed {
 		width: 100%;
 		min-width: auto;
 	}
-	
+
 	.outline-title {
 		font-size: 0.9rem;
 	}
-	
+
 	.outline-toggle {
 		display: block;
 	}
-	
+
 	.outline-list {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
 	}
-	
+
 	.outline-item {
 		margin-bottom: 0;
 	}
-	
+
 	.outline-link {
 		padding: 0.4rem 0.8rem;
 		font-size: 0.75rem;
@@ -1346,7 +1321,7 @@ onUnmounted(() => {
 		border-left: none;
 		background: rgba(100, 255, 218, 0.05);
 	}
-	
+
 	.outline-item.level-1 .outline-link,
 	.outline-item.level-2 .outline-link,
 	.outline-item.level-3 .outline-link,
@@ -1357,7 +1332,7 @@ onUnmounted(() => {
 		font-size: 0.75rem;
 		opacity: 1;
 	}
-	
+
 	.outline-item.active .outline-link {
 		background: rgba(100, 255, 218, 0.15);
 		border-left: none;
@@ -1368,61 +1343,61 @@ onUnmounted(() => {
 	.article-detail {
 		padding: 0 1rem;
 	}
-	
+
 	.article-title {
 		font-size: 1.75rem;
 	}
-	
+
 	.content-wrapper {
 		padding: 1.5rem;
 	}
-	
+
 	.article-stats {
 		gap: 1rem;
 	}
-	
+
 	.article-meta {
 		gap: 0.75rem;
 	}
-	
+
 	.category-tags-group {
 		gap: 0.25rem;
 	}
-	
+
 	.tag-inline {
 		font-size: 0.65rem;
 		padding: 0.15rem 0.4rem;
 	}
-	
+
 	.article-actions {
 		flex-direction: column;
 		align-items: center;
 	}
-	
+
 	.related-list {
 		grid-template-columns: 1fr;
 	}
-	
+
 	.breadcrumb {
 		flex-wrap: wrap;
 	}
-	
+
 	.breadcrumb-current {
 		max-width: 150px;
 	}
-	
+
 	.article-outline {
 		padding: 1rem;
 		max-height: 200px;
 	}
-	
+
 	.outline-list {
 		gap: 0.25rem;
 	}
-	
+
 	.outline-link {
 		padding: 0.3rem 0.6rem;
 		font-size: 0.7rem;
 	}
 }
-</style> 
+</style>

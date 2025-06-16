@@ -8,12 +8,11 @@
 			<span class="article-category">
 				{{ article.category }}
 			</span>
-		<div v-if="article.tags && article.tags.length > 0" class="article-tags">
-			<span v-for="tag in article.tags" :key="tag" class="tag">
-				{{ tag }}
-			</span>
-		</div>
-
+			<div v-if="article.tags && article.tags.length > 0" class="article-tags">
+				<span v-for="tag in article.tags" :key="tag" class="tag">
+					{{ tag }}
+				</span>
+			</div>
 		</div>
 
 		<h3 class="article-title">
@@ -54,11 +53,13 @@ const router = useRouter();
 
 const formatDate = (dateString: string) => {
 	const date = new Date(dateString);
-	return date.toLocaleDateString('zh-CN', {
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit'
-	}).replace(/\//g, '-');
+	return date
+		.toLocaleDateString("zh-CN", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		})
+		.replace(/\//g, "-");
 };
 
 const readMore = () => {

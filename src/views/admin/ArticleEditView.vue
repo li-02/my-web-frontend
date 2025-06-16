@@ -254,8 +254,7 @@ const validateForm = (): boolean => {
 	const isMetaKeywordsValid = validateMetaKeywords();
 	const isSlugValid = validateSlug();
 
-	return isTitleValid && isContentValid && isCategoryValid && isTagsValid && 
-		isSummaryValid && isMetaDescriptionValid && isMetaKeywordsValid && isSlugValid;
+	return isTitleValid && isContentValid && isCategoryValid && isTagsValid && isSummaryValid && isMetaDescriptionValid && isMetaKeywordsValid && isSlugValid;
 };
 
 // 方法
@@ -362,6 +361,7 @@ const publishArticle = async () => {
 
 		articleForm.status = "PUBLISHED";
 		await saveArticle();
+
 		ElMessage.success(isEditing.value ? "文章更新成功" : "文章发布成功");
 
 		setTimeout(() => {
@@ -411,12 +411,12 @@ const searchTags = (keyword: string) => {
 	if (searchTimeout) {
 		clearTimeout(searchTimeout);
 	}
-	
+
 	if (!keyword.trim()) {
 		tagSearchResults.value = [];
 		return;
 	}
-	
+
 	// 设置新的搜索定时器（防抖）
 	searchTimeout = setTimeout(async () => {
 		try {
@@ -433,18 +433,18 @@ const searchTags = (keyword: string) => {
 
 const addTag = async () => {
 	const tag = newTag.value.trim();
-	
+
 	// 验证标签输入
 	if (!tag) {
 		ElMessage.warning("请输入标签名称");
 		return;
 	}
-	
+
 	if (articleForm.tags.includes(tag)) {
 		ElMessage.warning(`标签 "${tag}" 已存在`);
 		return;
 	}
-	
+
 	// 检查标签数量限制
 	if (articleForm.tags.length >= validationRules.tags.maxCount) {
 		ElMessage.warning(`最多只能添加 ${validationRules.tags.maxCount} 个标签`);
@@ -453,21 +453,17 @@ const addTag = async () => {
 
 	// 检查标签是否存在于数据库中
 	const tagExists = allTags.value.includes(tag) || popularTags.value.includes(tag);
-	
+
 	if (!tagExists) {
 		// 使用 Element Plus 的确认对话框
 		try {
-			await ElMessageBox.confirm(
-				`标签 "${tag}" 不存在，是否创建新标签？`,
-				'创建新标签',
-				{
-					confirmButtonText: '创建',
-					cancelButtonText: '取消',
-					type: 'info',
-					customClass: 'create-tag-dialog'
-				}
-			);
-			
+			await ElMessageBox.confirm(`标签 "${tag}" 不存在，是否创建新标签？`, "创建新标签", {
+				confirmButtonText: "创建",
+				cancelButtonText: "取消",
+				type: "info",
+				customClass: "create-tag-dialog",
+			});
+
 			// 用户确认创建新标签
 			try {
 				await tagAPI.createTag(tag);
@@ -491,7 +487,7 @@ const addTag = async () => {
 	newTag.value = "";
 	tagSearchResults.value = [];
 	validateTags();
-	
+
 	// 成功添加提示
 	ElMessage.success(`标签 "${tag}" 添加成功`);
 };
@@ -511,7 +507,7 @@ const addSuggestedTag = (tag: string) => {
 		ElMessage.warning(`最多只能添加 ${validationRules.tags.maxCount} 个标签`);
 		return;
 	}
-	
+
 	if (!articleForm.tags.includes(tag)) {
 		articleForm.tags.push(tag);
 		validateTags(); // 添加推荐标签后验证
@@ -528,7 +524,7 @@ const selectSearchedTag = (tag: string) => {
 		ElMessage.warning(`最多只能添加 ${validationRules.tags.maxCount} 个标签`);
 		return;
 	}
-	
+
 	if (!articleForm.tags.includes(tag)) {
 		articleForm.tags.push(tag);
 		newTag.value = "";
@@ -556,13 +552,12 @@ const removeCover = () => {
 	articleForm.coverImage = "";
 };
 
-
 // md-editor-v3 回调函数
 const onUploadImg = async (files: File[], callback: (urls: string[]) => void) => {
 	try {
 		isUploading.value = true;
 		const urls: string[] = [];
-		const uploadResults = await uploadAPI.uploadImages(files, (fileIndex, progress) => {
+		const uploadResults = await uploadAPI.uploadImages(files, (fileIndex: number, progress: any) => {
 			// 更新上传进度
 			uploadProgress.value.set(fileIndex, progress.percentage);
 			console.log(`文件 ${fileIndex + 1} 上传进度: ${progress.percentage}%`);
@@ -607,11 +602,8 @@ const calculateEditorHeight = () => {
 // 组件挂载时初始化
 onMounted(async () => {
 	// 并行加载数据
-	await Promise.all([
-		loadCategories(),
-		loadPopularTags(),
-	]);
-	
+	await Promise.all([loadCategories(), loadPopularTags()]);
+
 	calculateEditorHeight();
 
 	// 监听窗口大小变化
@@ -653,12 +645,12 @@ onMounted(async () => {
 			<div class="edit-area">
 				<!-- 紧凑的标题区域 -->
 				<div class="title-section">
-					<input 
-						v-model="articleForm.title" 
-						type="text" 
-						class="title-input" 
-						:class="{ 'error': formErrors.title }"
-						placeholder="请输入文章标题..." 
+					<input
+						v-model="articleForm.title"
+						type="text"
+						class="title-input"
+						:class="{ error: formErrors.title }"
+						placeholder="请输入文章标题..."
 						maxlength="200"
 						@input="validateTitle"
 						@blur="validateTitle"
@@ -692,12 +684,12 @@ onMounted(async () => {
 					<h3 class="section-title">基本信息</h3>
 					<div class="form-group">
 						<label class="form-label">文章摘要</label>
-						<textarea 
-							v-model="articleForm.summary" 
-							class="form-textarea compact" 
-							:class="{ 'error': formErrors.summary }"
-							placeholder="请输入文章摘要（可选）..." 
-							rows="2" 
+						<textarea
+							v-model="articleForm.summary"
+							class="form-textarea compact"
+							:class="{ error: formErrors.summary }"
+							placeholder="请输入文章摘要（可选）..."
+							rows="2"
 							maxlength="500"
 							@input="validateSummary"
 							@blur="validateSummary"
@@ -744,12 +736,7 @@ onMounted(async () => {
 					<h3 class="section-title">分类和标签</h3>
 					<div class="form-group">
 						<label class="form-label">文章分类</label>
-						<select 
-							v-model="articleForm.categoryId" 
-							class="form-select" 
-							:class="{ 'error': formErrors.categoryId }"
-							@change="validateCategory"
-						>
+						<select v-model="articleForm.categoryId" class="form-select" :class="{ error: formErrors.categoryId }" @change="validateCategory">
 							<option :value="null">请选择分类</option>
 							<option v-for="category in categories" :key="category.id" :value="category.id">
 								{{ category.name }}
@@ -760,34 +747,31 @@ onMounted(async () => {
 					<div class="form-group">
 						<label class="form-label">文章标签</label>
 						<div class="tag-input-container">
-							<input 
-								v-model="newTag" 
-								type="text" 
-								class="tag-input" 
-								placeholder="输入标签名称搜索或创建新标签" 
-								@keyup.enter="addTag" 
-								@keyup.esc="newTag = ''; tagSearchResults = []"
+							<input
+								v-model="newTag"
+								type="text"
+								class="tag-input"
+								placeholder="输入标签名称搜索或创建新标签"
+								@keyup.enter="addTag"
+								@keyup.esc="
+									newTag = '';
+									tagSearchResults = [];
+								"
 								@input="searchTags(newTag)"
 							/>
 							<button class="add-tag-btn" @click="addTag" :disabled="!newTag.trim()">
-								{{ isSearchingTags ? '搜索中...' : '添加' }}
+								{{ isSearchingTags ? "搜索中..." : "添加" }}
 							</button>
 						</div>
-						
+
 						<!-- 搜索结果下拉列表 -->
 						<div v-if="tagSearchResults.length > 0" class="tag-search-results">
 							<div class="search-results-header">搜索结果：</div>
-							<button 
-								v-for="tag in tagSearchResults.slice(0, 8)" 
-								:key="tag" 
-								class="search-result-item"
-								:disabled="articleForm.tags.includes(tag)"
-								@click="selectSearchedTag(tag)"
-							>
+							<button v-for="tag in tagSearchResults.slice(0, 8)" :key="tag" class="search-result-item" :disabled="articleForm.tags.includes(tag)" @click="selectSearchedTag(tag)">
 								{{ tag }}
 							</button>
 						</div>
-						
+
 						<div class="selected-tags">
 							<span v-for="tag in articleForm.tags" :key="tag" class="tag-item">
 								{{ tag }}
@@ -827,12 +811,12 @@ onMounted(async () => {
 					<h3 class="section-title">SEO设置</h3>
 					<div class="form-group">
 						<label class="form-label">SEO描述</label>
-						<textarea 
-							v-model="articleForm.metaDescription" 
-							class="form-textarea compact" 
-							:class="{ 'error': formErrors.metaDescription }"
-							placeholder="用于搜索引擎展示的描述，建议150-160个字符..." 
-							rows="2" 
+						<textarea
+							v-model="articleForm.metaDescription"
+							class="form-textarea compact"
+							:class="{ error: formErrors.metaDescription }"
+							placeholder="用于搜索引擎展示的描述，建议150-160个字符..."
+							rows="2"
 							maxlength="160"
 							@input="validateMetaDescription"
 							@blur="validateMetaDescription"
@@ -845,12 +829,12 @@ onMounted(async () => {
 					</div>
 					<div class="form-group">
 						<label class="form-label">SEO关键词</label>
-						<input 
-							v-model="articleForm.metaKeywords" 
-							type="text" 
-							class="form-input" 
-							:class="{ 'error': formErrors.metaKeywords }"
-							placeholder="关键词用英文逗号分隔" 
+						<input
+							v-model="articleForm.metaKeywords"
+							type="text"
+							class="form-input"
+							:class="{ error: formErrors.metaKeywords }"
+							placeholder="关键词用英文逗号分隔"
 							maxlength="200"
 							@input="validateMetaKeywords"
 							@blur="validateMetaKeywords"
@@ -862,12 +846,12 @@ onMounted(async () => {
 					</div>
 					<div class="form-group">
 						<label class="form-label">URL别名</label>
-						<input 
-							v-model="articleForm.slug" 
-							type="text" 
-							class="form-input" 
-							:class="{ 'error': formErrors.slug }"
-							placeholder="自定义URL路径，只能包含小写字母、数字和连字符(-)" 
+						<input
+							v-model="articleForm.slug"
+							type="text"
+							class="form-input"
+							:class="{ error: formErrors.slug }"
+							placeholder="自定义URL路径，只能包含小写字母、数字和连字符(-)"
 							maxlength="60"
 							@input="validateSlug"
 							@blur="validateSlug"
@@ -903,8 +887,6 @@ onMounted(async () => {
 		</div>
 	</div>
 </template>
-
-
 
 <style scoped>
 .article-edit {
@@ -957,6 +939,7 @@ onMounted(async () => {
 
 .header-actions {
 	display: flex;
+	align-items: center;
 	gap: 12px;
 }
 

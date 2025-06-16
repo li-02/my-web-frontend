@@ -51,26 +51,26 @@ onMounted(() => {
 const loadDashboardData = async () => {
 	try {
 		loading.value = true;
-		
+
 		// 并行获取各种统计数据
 		const [articlesRes, categoriesRes] = await Promise.all([
 			articleAPI.getArticles({ page: 0, size: 1000 }), // 获取所有文章用于统计
 			categoryAPI.getCategories(), // 获取所有分类
 		]);
-		
+
 		// 处理文章数据
 		const articles = articlesRes.data.data.content || articlesRes.data.data || [];
 		const totalArticles = articles.length;
-		
+
 		// 计算总浏览量（所有文章的浏览量之和）
 		const totalViews = articles.reduce((sum: number, article: ApiArticle) => {
 			return sum + (article.viewCount || 0);
 		}, 0);
-		
+
 		// 获取分类数量
 		const categories = categoriesRes.data || [];
 		const totalCategories = categories.length;
-		
+
 		// 更新统计数据
 		stats.value = [
 			{ title: "总文章数", value: totalArticles, icon: "📝", color: "#1890ff" },
@@ -78,22 +78,22 @@ const loadDashboardData = async () => {
 			{ title: "评论数", value: 0, icon: "💬", color: "#fa8c16" }, // 暂时设置为0
 			{ title: "分类数", value: totalCategories, icon: "📁", color: "#722ed1" },
 		];
-		
+
 		// 获取最新文章（取前5篇已发布的文章）
 		const publishedArticles = articles
-			.filter((article: ApiArticle) => article.status === 'PUBLISHED')
+			.filter((article: ApiArticle) => article.status === "PUBLISHED")
 			.sort((a: ApiArticle, b: ApiArticle) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime())
 			.slice(0, 5);
-		
+
 		recentArticles.value = publishedArticles.map((article: ApiArticle) => ({
 			id: article.id,
 			title: article.title,
 			status: getStatusText(article.status),
-			category: article.categoryName || '未分类',
+			category: article.categoryName || "未分类",
 			views: article.viewCount || 0,
 			createTime: formatDate(article.createTime),
 		}));
-		
+
 		console.log("仪表盘数据加载成功:", { stats: stats.value, recentArticles: recentArticles.value });
 	} catch (error: any) {
 		console.error("获取仪表盘数据失败:", error);
@@ -106,9 +106,9 @@ const loadDashboardData = async () => {
 // 获取状态显示文本
 const getStatusText = (status: string) => {
 	const statusMap: { [key: string]: string } = {
-		'PUBLISHED': '已发布',
-		'DRAFT': '草稿',
-		'ARCHIVED': '已归档',
+		PUBLISHED: "已发布",
+		DRAFT: "草稿",
+		ARCHIVED: "已归档",
 	};
 	return statusMap[status] || status;
 };
@@ -116,11 +116,13 @@ const getStatusText = (status: string) => {
 // 格式化日期
 const formatDate = (dateString: string) => {
 	const date = new Date(dateString);
-	return date.toLocaleDateString('zh-CN', {
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit'
-	}).replace(/\//g, '-');
+	return date
+		.toLocaleDateString("zh-CN", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		})
+		.replace(/\//g, "-");
 };
 </script>
 

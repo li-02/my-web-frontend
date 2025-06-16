@@ -72,7 +72,7 @@ const statusOptions = [
 // 动态分类选项
 const categoryOptions = computed(() => {
 	const options = [{ label: "全部分类", value: "" }];
-	categories.value.forEach(category => {
+	categories.value.forEach((category) => {
 		options.push({ label: category.name, value: category.name });
 	});
 	return options;
@@ -113,9 +113,9 @@ const togglePin = async (article: Article) => {
 	try {
 		const newPinStatus = !article.isPinned;
 		await articleAPI.updatePinStatus(article.id.toString(), newPinStatus);
-		
+
 		article.isPinned = newPinStatus;
-		ElMessage.success(`文章${newPinStatus ? '置顶' : '取消置顶'}成功`);
+		ElMessage.success(`文章${newPinStatus ? "置顶" : "取消置顶"}成功`);
 	} catch (error: any) {
 		console.error("更新置顶状态失败:", error);
 		ElMessage.error("更新置顶状态失败");
@@ -127,7 +127,7 @@ const togglePublish = async (article: Article) => {
 	try {
 		const newStatus = article.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
 		await articleAPI.updatePublishStatus(article.id.toString(), newStatus);
-		
+
 		article.status = newStatus;
 		const statusText = newStatus === "PUBLISHED" ? "发布" : "设为草稿";
 		ElMessage.success(`文章${statusText}成功`);
@@ -140,23 +140,19 @@ const togglePublish = async (article: Article) => {
 // 删除文章
 const deleteArticle = async (id: number) => {
 	try {
-		await ElMessageBox.confirm(
-			'确定要删除这篇文章吗？此操作不可撤销。',
-			'删除确认',
-			{
-				confirmButtonText: '删除',
-				cancelButtonText: '取消',
-				type: 'warning',
-			}
-		);
-		
+		await ElMessageBox.confirm("确定要删除这篇文章吗？此操作不可撤销。", "删除确认", {
+			confirmButtonText: "删除",
+			cancelButtonText: "取消",
+			type: "warning",
+		});
+
 		await articleAPI.deleteArticle(id.toString());
-		ElMessage.success('文章删除成功');
-		
+		ElMessage.success("文章删除成功");
+
 		// 重新加载文章列表
 		await loadArticles();
 	} catch (error: any) {
-		if (error !== 'cancel') {
+		if (error !== "cancel") {
 			console.error("删除文章失败:", error);
 			ElMessage.error(error.response?.data?.message || "删除文章失败");
 		}
@@ -169,25 +165,21 @@ const batchPublish = async () => {
 		ElMessage.warning("请选择要操作的文章");
 		return;
 	}
-	
+
 	try {
-		await ElMessageBox.confirm(
-			`确定要批量发布 ${selectedArticles.value.length} 篇文章吗？`,
-			'批量发布确认',
-			{
-				confirmButtonText: '发布',
-				cancelButtonText: '取消',
-				type: 'info',
-			}
-		);
-		
-		await articleAPI.batchUpdateStatus(selectedArticles.value, 'PUBLISHED');
-		
+		await ElMessageBox.confirm(`确定要批量发布 ${selectedArticles.value.length} 篇文章吗？`, "批量发布确认", {
+			confirmButtonText: "发布",
+			cancelButtonText: "取消",
+			type: "info",
+		});
+
+		await articleAPI.batchUpdateStatus(selectedArticles.value, "PUBLISHED");
+
 		selectedArticles.value = [];
 		ElMessage.success("批量发布成功");
 		await loadArticles();
 	} catch (error: any) {
-		if (error !== 'cancel') {
+		if (error !== "cancel") {
 			console.error("批量发布失败:", error);
 			ElMessage.error("批量发布失败");
 		}
@@ -199,25 +191,21 @@ const batchDelete = async () => {
 		ElMessage.warning("请选择要删除的文章");
 		return;
 	}
-	
+
 	try {
-		await ElMessageBox.confirm(
-			`确定要删除 ${selectedArticles.value.length} 篇文章吗？此操作不可撤销。`,
-			'批量删除确认',
-			{
-				confirmButtonText: '删除',
-				cancelButtonText: '取消',
-				type: 'warning',
-			}
-		);
-		
+		await ElMessageBox.confirm(`确定要删除 ${selectedArticles.value.length} 篇文章吗？此操作不可撤销。`, "批量删除确认", {
+			confirmButtonText: "删除",
+			cancelButtonText: "取消",
+			type: "warning",
+		});
+
 		await articleAPI.batchDelete(selectedArticles.value);
-		
+
 		selectedArticles.value = [];
 		ElMessage.success("批量删除成功");
 		await loadArticles();
 	} catch (error: any) {
-		if (error !== 'cancel') {
+		if (error !== "cancel") {
 			console.error("批量删除失败:", error);
 			ElMessage.error("批量删除失败");
 		}
@@ -251,7 +239,7 @@ const loadArticles = async () => {
 			page: currentPage.value - 1, // 后端通常从0开始
 			size: pageSize.value,
 		};
-		
+
 		// 添加搜索和筛选条件
 		if (searchKeyword.value.trim()) {
 			params.keyword = searchKeyword.value.trim();
@@ -261,16 +249,16 @@ const loadArticles = async () => {
 		}
 		if (selectedCategory.value) {
 			// 根据分类名称找到分类ID
-			const category = categories.value.find(cat => cat.name === selectedCategory.value);
+			const category = categories.value.find((cat) => cat.name === selectedCategory.value);
 			if (category) {
 				params.categoryId = category.id;
 			}
 		}
-		
+
 		const response = await articleAPI.getArticles(params);
 		articles.value = response.data.data;
-		total.value = response.data.total || 0;	
-		
+		total.value = response.data.total || 0;
+
 		console.log("文章列表加载成功:", response.data);
 	} catch (error: any) {
 		console.error("获取文章列表失败:", error);
@@ -314,10 +302,7 @@ watch(searchKeyword, (newValue, oldValue) => {
 
 // 组件挂载时获取数据
 onMounted(async () => {
-	await Promise.all([
-		loadCategories(),
-		loadArticles()
-	]);
+	await Promise.all([loadCategories(), loadArticles()]);
 });
 </script>
 
@@ -377,11 +362,9 @@ onMounted(async () => {
 			<div class="empty-icon">📝</div>
 			<div class="empty-title">暂无文章</div>
 			<div class="empty-description">
-				{{ searchKeyword || selectedStatus || selectedCategory ? '没有找到匹配的文章' : '还没有发布任何文章，点击上方按钮创建第一篇文章吧！' }}
+				{{ searchKeyword || selectedStatus || selectedCategory ? "没有找到匹配的文章" : "还没有发布任何文章，点击上方按钮创建第一篇文章吧！" }}
 			</div>
-			<button v-if="!searchKeyword && !selectedStatus && !selectedCategory" class="empty-btn" @click="createArticle">
-				创建第一篇文章
-			</button>
+			<button v-if="!searchKeyword && !selectedStatus && !selectedCategory" class="empty-btn" @click="createArticle">创建第一篇文章</button>
 		</div>
 
 		<!-- 文章列表 -->
@@ -422,7 +405,7 @@ onMounted(async () => {
 					</span>
 				</div>
 
-				<div class="article-category">{{ article.categoryName || '未分类' }}</div>
+				<div class="article-category">{{ article.categoryName || "未分类" }}</div>
 
 				<div class="article-views">{{ article.viewCount }}</div>
 
@@ -934,8 +917,12 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-	from { transform: rotate(0deg); }
-	to { transform: rotate(360deg); }
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 /* 空状态 */
